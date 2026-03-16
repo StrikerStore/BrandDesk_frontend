@@ -158,6 +158,30 @@
   color: var(--text-tertiary);
 }
 
+.loadMoreWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 16px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.loadMoreSpinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-md);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+.threadCount {
+  text-align: center;
+  padding: 10px 16px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
 .threadRow {
   width: 100%;
   display: flex;

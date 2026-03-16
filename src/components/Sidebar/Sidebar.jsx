@@ -1,13 +1,14 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { logoutUser, fetchViews, createView, deleteView, fetchStats } from '../../utils/api';
 import { formatTime, getBrandColor, STATUS_CONFIG, truncate, getInitials } from '../../utils/helpers.js';
 import Settings from '../Settings/Settings.jsx';
 import styles from './Sidebar.module.css';
 import logo from '../../assets/logo.png';
 
+
 export default function Sidebar({
-  threads, loading, syncing, brands, filters,
-  onFilterChange, selectedId, onSelect, onSync, onFullSync, onAnalytics, user, onLogout,
+  threads, loading, loadingMore, hasMore, syncing, brands, filters,
+  onFilterChange, selectedId, onSelect, onSync, onFullSync, onLoadMore, onAnalytics, user, onLogout,
 }) {
   const [showUserMenu, setShowUserMenu]   = useState(false);
   const [showSettings, setShowSettings]   = useState(false);
@@ -20,6 +21,17 @@ export default function Sidebar({
   const [viewName, setViewName]           = useState('');
   const [savingView, setSavingView]       = useState(false);
   const searchRef = useRef(null);
+  const listRef   = useRef(null);
+
+  // Infinite scroll — load more when near bottom
+  const handleListScroll = useCallback(() => {
+    const el = listRef.current;
+    if (!el || loadingMore || !hasMore) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distFromBottom < 200) {
+      onLoadMore();
+    }
+  }, [loadingMore, hasMore, onLoadMore]);
 
   const handleLogout = async () => { try { await logoutUser(); } catch {} onLogout(); };
 
@@ -344,7 +356,7 @@ export default function Sidebar({
       </div>
 
       {/* Thread list */}
-      <div className={styles.list}>
+      <div className={styles.list} ref={listRef} onScroll={handleListScroll}>
         {loading && threads.length === 0 ? (
           <div className={styles.loadingWrap}>{[1,2,3,4].map(i => <ThreadSkeleton key={i} />)}</div>
         ) : threads.length === 0 ? (
@@ -352,9 +364,27 @@ export default function Sidebar({
             <p>{searchVal ? `No results for "${searchVal}"` : 'No tickets match these filters'}</p>
           </div>
         ) : (
-          threads.map(t => (
-            <ThreadRow key={t.id} thread={t} selected={t.id === selectedId} onSelect={() => onSelect(t.id)} />
-          ))
+          <>
+            {threads.map(t => (
+              <ThreadRow key={t.id} thread={t} selected={t.id === selectedId} onSelect={() => onSelect(t.id)} />
+            ))}
+            {loadingMore && (
+              <div className={styles.loadMoreWrap}>
+                <div className={styles.loadMoreSpinner} />
+                <span>Loading more…</span>
+              </div>
+            )}
+            {!loadingMore && hasMore && (
+              <div className={styles.threadCount}>
+                Showing {threads.length} of {threads.length + '+'}  — scroll for more
+              </div>
+            )}
+            {!hasMore && threads.length > 20 && (
+              <div className={styles.threadCount}>
+                All {threads.length} threads loaded
+              </div>
+            )}
+          </>
         )}
       </div>
 

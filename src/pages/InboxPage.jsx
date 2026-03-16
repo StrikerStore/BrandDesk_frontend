@@ -26,7 +26,7 @@ export default function InboxPage({ user, onLogout }) {
   const startXRef   = useRef(0);
   const startWRef   = useRef(0);
 
-  const { threads, loading, syncing, sync, fullSync, updateThreadLocal, removeThreadLocal } = useThreads(
+  const { threads, loading, loadingMore, syncing, hasMore, sync, fullSync, loadMore, updateThreadLocal, removeThreadLocal } = useThreads(
     (() => {
       const { search, ...rest } = filters;
       const params = { ...rest };
@@ -88,6 +88,8 @@ export default function InboxPage({ user, onLogout }) {
         <Sidebar
           threads={threads}
           loading={loading}
+          loadingMore={loadingMore}
+          hasMore={hasMore}
           syncing={syncing}
           brands={brands}
           filters={filters}
@@ -96,6 +98,7 @@ export default function InboxPage({ user, onLogout }) {
           onSelect={handleSelectThread}
           onSync={sync}
           onFullSync={fullSync}
+          onLoadMore={loadMore}
           onAnalytics={() => setShowAnalytics(true)}
           user={user}
           onLogout={onLogout}
