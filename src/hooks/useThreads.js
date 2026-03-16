@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchThreads, syncThreads as apiSync } from '../utils/api';
+import { fetchThreads, syncThreads as apiSync, fullSyncThreads as apiFullSync } from '../utils/api';
 
 export function useThreads(filters = {}) {
   const [threads, setThreads]   = useState([]);
@@ -36,6 +36,18 @@ export function useThreads(filters = {}) {
     }
   }, [load]);
 
+  const fullSync = useCallback(async () => {
+    setSyncing(true);
+    try {
+      await apiFullSync();
+      await load();
+    } catch (err) {
+      console.error('Full sync failed:', err.message);
+    } finally {
+      setSyncing(false);
+    }
+  }, [load]);
+
   // Optimistic update — update fields but KEEP thread in current position
   // Only re-sort if priority changes (urgent floats to top)
   const updateThreadLocal = useCallback((id, updates) => {
@@ -65,5 +77,5 @@ export function useThreads(filters = {}) {
     return () => clearInterval(pollRef.current);
   }, [load]);
 
-  return { threads, loading, error, total, syncing, reload: load, sync, updateThreadLocal, removeThreadLocal };
+  return { threads, loading, error, total, syncing, reload: load, sync, fullSync, updateThreadLocal, removeThreadLocal };
 }

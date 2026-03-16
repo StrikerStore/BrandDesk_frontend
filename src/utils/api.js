@@ -12,6 +12,7 @@ export const updateThread     = (id, data)    => api.patch(`/api/threads/${id}`,
 export const resolveThread    = (id, data)    => api.post(`/api/threads/${id}/resolve`, data);
 export const sendReply        = (gmailId, data) => api.post(`/api/threads/${gmailId}/reply`, data);
 export const syncThreads      = ()            => api.post('/api/sync');
+export const fullSyncThreads  = ()            => api.post('/api/sync?full=true');
 export const fetchStats       = ()            => api.get('/api/threads/stats/overview');
 
 // Customers

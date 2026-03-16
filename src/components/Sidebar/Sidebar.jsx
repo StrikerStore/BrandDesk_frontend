@@ -7,7 +7,7 @@ import logo from '../../assets/logo.png';
 
 export default function Sidebar({
   threads, loading, syncing, brands, filters,
-  onFilterChange, selectedId, onSelect, onSync, onAnalytics, user, onLogout,
+  onFilterChange, selectedId, onSelect, onSync, onFullSync, onAnalytics, user, onLogout,
 }) {
   const [showUserMenu, setShowUserMenu]   = useState(false);
   const [showSettings, setShowSettings]   = useState(false);
@@ -192,6 +192,18 @@ export default function Sidebar({
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
                     Settings
                   </button>
+                  {user?.role === 'admin' && (
+                    <button className={styles.userMenuItem}
+                      onClick={() => { setShowUserMenu(false); onFullSync(); }}
+                      disabled={syncing}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                        <path d="M23 4v6h-6M1 20v-6h6"/>
+                        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                      </svg>
+                      {syncing ? 'Syncing…' : 'Full Sync (500)'}
+                    </button>
+                  )}
                   {user?.role === 'admin' && (
                     <a className={styles.userMenuItem}
                       href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/auth/google`}

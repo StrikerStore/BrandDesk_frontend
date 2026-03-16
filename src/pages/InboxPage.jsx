@@ -26,7 +26,7 @@ export default function InboxPage({ user, onLogout }) {
   const startXRef   = useRef(0);
   const startWRef   = useRef(0);
 
-  const { threads, loading, syncing, sync, updateThreadLocal, removeThreadLocal } = useThreads(
+  const { threads, loading, syncing, sync, fullSync, updateThreadLocal, removeThreadLocal } = useThreads(
     (() => {
       const { search, ...rest } = filters;
       const params = { ...rest };
@@ -95,6 +95,7 @@ export default function InboxPage({ user, onLogout }) {
           selectedId={selectedThreadId}
           onSelect={handleSelectThread}
           onSync={sync}
+          onFullSync={fullSync}
           onAnalytics={() => setShowAnalytics(true)}
           user={user}
           onLogout={onLogout}
