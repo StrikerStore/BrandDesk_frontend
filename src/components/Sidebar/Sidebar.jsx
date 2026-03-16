@@ -3,6 +3,7 @@ import { logoutUser, fetchViews, createView, deleteView, fetchStats } from '../.
 import { formatTime, getBrandColor, STATUS_CONFIG, truncate, getInitials } from '../../utils/helpers.js';
 import Settings from '../Settings/Settings.jsx';
 import styles from './Sidebar.module.css';
+import logo from '../../assets/logo.png';
 
 export default function Sidebar({
   threads, loading, syncing, brands, filters,
@@ -153,7 +154,7 @@ export default function Sidebar({
       <div className={styles.header}>
         <div className={styles.headerTop}>
           <div className={styles.logo}>
-            <img src="/src/assets/logo.png" alt="Logo" style={{ width: 28, height: 28, objectFit: 'contain' }} />
+            <img src={logo} alt="Logo" style={{ width: 28, height: 28, objectFit: 'contain' }} />
             <span className={styles.logoText}>BrandDesk</span>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>

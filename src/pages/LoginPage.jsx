@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { loginUser } from '../utils/api.js';
 import styles from './LoginPage.module.css';
+import logo from '../assets/logo.png';
 
 export default function LoginPage({ onLogin }) {
   const [form, setForm]     = useState({ email: '', password: '' });
@@ -26,7 +27,7 @@ export default function LoginPage({ onLogin }) {
     <div className={styles.root}>
       <div className={styles.card}>
         <div className={styles.logo}>
-          <img src="/src/assets/logo.png" alt="Logo" style={{ width: 32, height: 32, objectFit: 'contain' }} />
+          <img src={logo} alt="Logo" style={{ width: 32, height: 32, objectFit: 'contain' }} />
           <span className={styles.logoText}>BrandDesk</span>
         </div>
 
