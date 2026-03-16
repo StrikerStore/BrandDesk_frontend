@@ -24,14 +24,15 @@ export default function Sidebar({
   const listRef   = useRef(null);
 
   // Infinite scroll — load more when near bottom
+  // onLoadMore has its own internal guards via refs, so just call it
   const handleListScroll = useCallback(() => {
     const el = listRef.current;
-    if (!el || loadingMore || !hasMore) return;
+    if (!el) return;
     const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     if (distFromBottom < 200) {
       onLoadMore();
     }
-  }, [loadingMore, hasMore, onLoadMore]);
+  }, [onLoadMore]);
 
   const handleLogout = async () => { try { await logoutUser(); } catch {} onLogout(); };
 
