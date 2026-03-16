@@ -1,0 +1,626 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.header {
+  padding: 16px 16px 0;
+  flex-shrink: 0;
+}
+
+.headerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logoText {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+
+.iconBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: background 0.12s;
+}
+.iconBtn:hover { background: var(--surface-2); }
+.iconBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.inboxMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.inboxLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.unreadBadge {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: var(--accent-light);
+  color: var(--accent-text);
+  font-weight: 500;
+}
+
+.filterSection {
+  padding: 12px 16px 0;
+  flex-shrink: 0;
+}
+
+.pills {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.pill {
+  font-size: 11.5px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  background: transparent;
+  transition: all 0.12s;
+  font-weight: 500;
+}
+.pill:hover { border-color: var(--border-md); color: var(--text-primary); }
+.pillActive {
+  background: var(--text-primary);
+  color: white;
+  border-color: var(--text-primary);
+}
+.pillBrandActive {
+  border-width: 1px;
+}
+
+.statusTabs {
+  display: flex;
+  padding: 10px 16px 0;
+  gap: 2px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+
+.statusTab {
+  flex: 1;
+  padding: 8px 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  border-bottom: 2px solid transparent;
+  transition: all 0.12s;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+.statusTab:hover { color: var(--text-secondary); }
+.statusTabActive {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.tabCount {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  color: var(--text-tertiary);
+  min-width: 16px;
+  text-align: center;
+  line-height: 1.6;
+}
+.tabCountActive {
+  background: var(--accent-light);
+  color: var(--accent-text);
+}
+
+.list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.loadingWrap { padding: 8px; }
+
+.emptyList {
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.threadRow {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  position: relative;
+  transition: background 0.1s;
+  cursor: pointer;
+}
+.threadRow:hover { background: var(--surface-2); }
+.threadSelected { background: var(--accent-light) !important; }
+.threadSelected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
+.unreadDot {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.threadBody { flex: 1; min-width: 0; }
+
+.threadTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 2px;
+}
+
+.threadName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.threadTime {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  margin-left: 6px;
+}
+
+.threadSubject {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.threadMeta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.brandTag {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 99px;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.statusLabel {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Skeleton */
+.skeleton {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.skeletonAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  flex-shrink: 0;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+.skeletonBody { flex: 1; display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.skeletonLine {
+  height: 12px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* User menu */
+.userMenu {
+  position: absolute;
+  top: 32px;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 10px;
+  min-width: 200px;
+  z-index: 100;
+}
+.userEmail {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  padding: 4px 6px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+  word-break: break-all;
+}
+.logoutBtn {
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 13px;
+  color: var(--red);
+  border-radius: var(--radius-sm);
+}
+.logoutBtn:hover { background: var(--red-light); }
+
+/* Search */
+.searchWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.searchIcon { color: var(--text-tertiary); flex-shrink: 0; }
+.searchInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: transparent;
+}
+.searchInput::placeholder { color: var(--text-tertiary); }
+.searchClear {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  padding: 2px 4px;
+}
+.searchClear:hover { color: var(--text-primary); }
+.searchBtn {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-md);
+  color: var(--text-secondary);
+  background: var(--surface);
+  flex-shrink: 0;
+  transition: all 0.12s;
+}
+.searchBtn:hover { border-color: var(--accent); color: var(--accent); }
+.searchBtnActive { background: var(--accent); color: white; border-color: var(--accent); }
+
+/* Urgent badge */
+.urgentBadge {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-weight: 500;
+}
+
+/* Urgent thread row */
+.threadUrgent {
+  border-left: 2px solid #dc2626 !important;
+}
+
+/* Avatar wrap for priority dot */
+.avatarWrap { position: relative; flex-shrink: 0; }
+.urgentDot {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #dc2626;
+  border: 1.5px solid var(--surface);
+}
+
+/* Tag pills in thread row */
+.tagPill {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+/* Saved views */
+.savedViews {
+  padding: 8px 14px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.savedViewsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.viewPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 3px 8px 3px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--border-md);
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.12s;
+  max-width: 140px;
+}
+.viewPill:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.viewPillActive {
+  background: var(--accent-light);
+  color: var(--accent-text);
+  border-color: #93c5fd;
+}
+
+.viewPillName {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
+
+.viewPillDelete {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  line-height: 1;
+  flex-shrink: 0;
+  padding: 1px 2px;
+  border-radius: 50%;
+}
+.viewPillDelete:hover { color: var(--red); background: var(--red-light); }
+
+.addViewBtn {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 99px;
+  border: 1px dashed var(--border-md);
+  color: var(--text-tertiary);
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.addViewBtn:hover { border-color: var(--accent); color: var(--accent); }
+
+.saveViewInput {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.viewNameInput {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  border: 1px solid var(--accent);
+  border-radius: 99px;
+  padding: 3px 10px;
+  outline: none;
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.viewSaveBtn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: var(--accent);
+  color: white;
+  flex-shrink: 0;
+}
+.viewSaveBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.viewCancelBtn {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  padding: 2px 5px;
+  flex-shrink: 0;
+}
+.viewCancelBtn:hover { color: var(--text-primary); }
+
+.settingsBtn {
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  margin-bottom: 2px;
+}
+.settingsBtn:hover { background: var(--surface-2); color: var(--text-primary); }
+
+/* SLA indicators on thread rows */
+.threadBreached {
+  background: #fff5f5 !important;
+  border-left: 2px solid #dc2626 !important;
+}
+.threadBreached:hover { background: #fee2e2 !important; }
+
+.threadAtRisk {
+  background: #fffbeb !important;
+  border-left: 2px solid #d97706 !important;
+}
+.threadAtRisk:hover { background: #fef3c7 !important; }
+
+/* Red dot on avatar for breached */
+.slaBreachedDot {
+  position: absolute;
+  bottom: -1px;
+  left: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #dc2626;
+  border: 1.5px solid var(--surface);
+}
+
+/* "2h left" amber badge next to time */
+.slaAtRiskBadge {
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+  white-space: nowrap;
+}
+
+/* "SLA breached" red pill in meta row */
+.slaBreachedPill {
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+  white-space: nowrap;
+}
+
+/* Updated user menu */
+.userInfo {
+  padding: 10px 12px 8px;
+}
+.userName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.userRole {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+.userRoleAdmin {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.userMenuDivider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+.userMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-radius: 0;
+  text-decoration: none;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+.userMenuItem:hover { background: var(--surface-2); color: var(--text-primary); }
+.userMenuItemDanger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 7px 12px;
+  font-size: 13px;
+  color: #dc2626;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.userMenuItemDanger:hover { background: #fef2f2; }

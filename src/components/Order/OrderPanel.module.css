@@ -1,0 +1,209 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.section:last-child { border-bottom: none; }
+.sectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.orderId {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-light);
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.splitBadge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: #f5f3ff;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.countBadge {
+  font-size: 10px; font-weight: 600;
+  padding: 1px 6px; border-radius: 99px;
+  background: var(--surface-2); color: var(--text-tertiary);
+  text-transform: none; letter-spacing: 0;
+}
+.loading {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--text-tertiary); padding: 8px 0;
+}
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--border-md);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.errorBox {
+  font-size: 12px; color: #b91c1c;
+  background: #fef2f2; border: 1px solid #fca5a5;
+  border-radius: var(--radius-sm); padding: 8px 10px;
+}
+.orderRows { display: flex; flex-direction: column; gap: 8px; }
+.orderRow {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface);
+}
+.orderRowSplit { border-color: #ddd6fe; background: #faf8ff; }
+.orderRowHeader {
+  display: flex; align-items: flex-start;
+  justify-content: space-between;
+  padding: 9px 12px 6px; gap: 8px;
+}
+.orderRowLeft {
+  display: flex; align-items: center;
+  flex-wrap: wrap; gap: 5px; flex: 1; min-width: 0;
+}
+.splitLabel {
+  font-size: 10px; font-weight: 600;
+  color: #6d28d9; font-family: var(--font-mono);
+}
+.productName {
+  font-size: 12.5px; font-weight: 500;
+  color: var(--text-primary); line-height: 1.4;
+}
+.sizeBadge {
+  font-size: 10px; font-weight: 600;
+  padding: 1px 6px; border-radius: 4px;
+  background: var(--surface-2); color: var(--text-secondary);
+  border: 1px solid var(--border-md); flex-shrink: 0;
+}
+.qtyBadge { font-size: 10px; font-weight: 600; color: var(--text-tertiary); flex-shrink: 0; }
+.orderRowRight { flex-shrink: 0; }
+.noTracking {
+  font-size: 10px; color: var(--text-tertiary);
+  padding: 2px 6px; border-radius: 4px; background: var(--surface-2);
+}
+.trackingInfo {
+  padding: 8px 12px; border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 5px;
+  background: var(--surface-2);
+}
+.trackingRow { display: flex; align-items: baseline; gap: 8px; }
+.trackingLabel {
+  font-size: 10px; font-weight: 600;
+  color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: 0.04em;
+  min-width: 46px; flex-shrink: 0;
+}
+.trackingVal { font-size: 12px; color: var(--text-primary); }
+.labelLink { font-size: 12px; color: var(--accent); font-weight: 500; }
+.labelLink:hover { text-decoration: underline; }
+.paymentRow {
+  display: flex; align-items: center;
+  gap: 8px; padding: 6px 12px 8px; flex-wrap: wrap;
+}
+.paymentType {
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-tertiary);
+  background: var(--surface-2); border: 1px solid var(--border-md);
+  padding: 1px 6px; border-radius: 4px;
+}
+.collectableAmt {
+  font-size: 11px; font-weight: 600; color: #b45309;
+  background: #fffbeb; border: 1px solid #fcd34d;
+  padding: 1px 6px; border-radius: 4px;
+}
+.orderDate { font-size: 11px; color: var(--text-tertiary); margin-left: auto; }
+.addressBox {
+  margin-top: 8px; padding: 8px 10px;
+  background: var(--surface-2); border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 3px;
+}
+.addressLabel {
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary);
+}
+.addressVal { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+.emptyPast { font-size: 12px; color: var(--text-tertiary); padding: 4px 0; }
+.pastList { display: flex; flex-direction: column; gap: 1px; }
+.pastRow {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 0; border-bottom: 1px solid var(--border); gap: 8px;
+}
+.pastRow:last-child { border-bottom: none; }
+.pastRowCurrent {
+  background: var(--accent-light);
+  border-radius: var(--radius-sm); padding: 7px 6px;
+}
+.pastLeft { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
+.pastOrderId {
+  font-size: 11.5px; font-weight: 600;
+  font-family: var(--font-mono); color: var(--text-primary); flex-shrink: 0;
+}
+.currentBadge {
+  font-size: 9px; font-weight: 600;
+  padding: 1px 5px; border-radius: 99px;
+  background: var(--accent); color: white;
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+.pastDate { font-size: 11px; color: var(--text-tertiary); white-space: nowrap; }
+.pastRight { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.pastTotal { font-size: 11.5px; font-weight: 600; color: var(--text-secondary); }
+
+/* Past orders accordion */
+.pastAccordion {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.pastAccordion:last-child { margin-bottom: 0; }
+.pastAccordionCurrent {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.pastHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  gap: 8px;
+  user-select: none;
+}
+.pastHeader:hover:not([style*="default"]) { background: var(--surface-2); }
+
+.chevron {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.chevronOpen { color: var(--accent); }
+
+.pastBody {
+  border-top: 1px solid var(--border);
+  padding: 8px;
+  background: var(--surface);
+}
