@@ -70,6 +70,31 @@
 }
 .input:focus { border-color: var(--accent); }
 
+.passwordWrap {
+  position: relative;
+}
+.passwordWrap .input {
+  padding-right: 42px;
+}
+.eyeBtn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+}
+.eyeBtn:hover {
+  color: var(--text-primary);
+}
+
 .error {
   font-size: 13px;
   color: var(--red);
