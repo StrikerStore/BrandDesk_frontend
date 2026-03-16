@@ -12,6 +12,6 @@ export default defineConfig({
   },
   preview: {
     host: "0.0.0.0",
-    allowedHosts: ["www.branddesk.in"]
+    allowedHosts: ["www.branddesk.in","branddesk-frontend-production.up.railway.app"]
   }
 });
