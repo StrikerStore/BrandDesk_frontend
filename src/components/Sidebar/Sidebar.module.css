@@ -147,7 +147,17 @@
 .list {
   flex: 1;
   overflow-y: auto;
+  margin-right: 5px;  /* avoid overlapping the panel resize handle */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-md) transparent;
 }
+.list::-webkit-scrollbar { width: 5px; }
+.list::-webkit-scrollbar-track { background: transparent; }
+.list::-webkit-scrollbar-thumb {
+  background: var(--border-md);
+  border-radius: 99px;
+}
+.list::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
 
 .loadingWrap { padding: 8px; }
 
