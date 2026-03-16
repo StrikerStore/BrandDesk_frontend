@@ -100,16 +100,8 @@ export default function Sidebar({
     return () => clearInterval(interval);
   }, []);
 
-  // Recount when threads change (optimistic updates)
-  useEffect(() => {
-    if (threads.length > 0) {
-      const local = threads.reduce((acc, t) => {
-        acc[t.status] = (acc[t.status] || 0) + 1;
-        return acc;
-      }, {});
-      setStats(prev => ({ ...prev, ...local }));
-    }
-  }, [threads]);
+  // Note: stats are loaded from the backend via fetchStats() which gives
+  // accurate total counts across ALL threads, not just the loaded page.
 
   const commitSearch = () => {
     const val = searchVal.trim();
