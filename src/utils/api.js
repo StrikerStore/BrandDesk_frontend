@@ -5,6 +5,14 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// In production cross-domain setups, cookies may be blocked by SameSite rules.
+// We also store the token in localStorage as fallback and send via Authorization header.
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('bd_token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 // Threads
 export const fetchThreads     = (params = {}) => api.get('/api/threads', { params });
 export const fetchThread      = (id)          => api.get(`/api/threads/${id}`);
@@ -62,11 +70,18 @@ export const updateUser      = (id, data) => api.patch(`/api/users/${id}`, data)
 export const deactivateUser  = (id)       => api.delete(`/api/users/${id}`);
 
 // Auth
-export const loginUser        = (data) => api.post('/api/users/login', data);
-export const logoutUser       = ()     => api.post('/api/users/logout');
-export const fetchCurrentUser = ()     => api.get('/api/users/me');
+export const loginUser = async (data) => {
+  const res = await api.post('/api/users/login', data);
+  if (res.data?.token) localStorage.setItem('bd_token', res.data.token);
+  return res;
+};
+export const logoutUser = async () => {
+  localStorage.removeItem('bd_token');
+  return api.post('/api/users/logout');
+};
+export const fetchCurrentUser = () => api.get('/api/users/me');
 export const updateCurrentUser= (data) => api.patch('/api/users/me', data);
 export const fetchAuthStatus  = ()     => api.get('/auth/status');
-export const logout           = ()     => api.post('/api/users/logout');
+export const logout           = ()     => { localStorage.removeItem('bd_token'); return api.post('/api/users/logout'); };
 
 export default api;
