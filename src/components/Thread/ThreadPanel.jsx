@@ -19,12 +19,56 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolveForm, setResolveForm]       = useState({ resolved_by: '', resolution_note: '' });
   const [resolving, setResolving]           = useState(false);
+  const [grammarMatches, setGrammarMatches] = useState([]);
+  const [grammarLoading, setGrammarLoading] = useState(false);
 
   // Pre-fill resolver name from last used
   const openResolveModal = () => {
     const savedName = localStorage.getItem('branddesk_resolver_name') || '';
     setResolveForm({ resolved_by: savedName, resolution_note: '' });
     setShowResolveModal(true);
+  };
+
+  const handleGrammarCheck = async () => {
+    if (!replyText.trim() || replyText.trim().length < 10) return;
+    setGrammarLoading(true);
+    setGrammarMatches([]);
+    try {
+      const params = new URLSearchParams({
+        text:     replyText,
+        language: 'en-IN',
+      });
+      const res = await fetch('https://api.languagetool.org/v2/check', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body:    params.toString(),
+      });
+      const data = await res.json();
+      const filtered = (data.matches || []).filter(m =>
+        m.replacements?.length > 0 &&
+        m.rule?.issueType !== 'style'
+      );
+      setGrammarMatches(filtered);
+    } catch (err) {
+      console.error('LanguageTool error:', err);
+    } finally {
+      setGrammarLoading(false);
+    }
+  };
+
+  const handleApplyFix = (match) => {
+    const replacement = match.replacements[0].value;
+    const newText = replyText.slice(0, match.offset) + replacement + replyText.slice(match.offset + match.length);
+    setReplyText(newText);
+    const diff = replacement.length - match.length;
+    setGrammarMatches(prev =>
+      prev.filter(m => m.offset !== match.offset)
+          .map(m => m.offset > match.offset ? { ...m, offset: m.offset + diff } : m)
+    );
+  };
+
+  const handleDismissFix = (match) => {
+    setGrammarMatches(prev => prev.filter(m => m.offset !== match.offset));
   };
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
@@ -384,15 +428,67 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
           className={`${styles.textarea} ${isNote ? styles.textareaNote : ''}`}
           rows={4}
           value={replyText}
-          onChange={e => setReplyText(e.target.value)}
+          onChange={e => { setReplyText(e.target.value); setGrammarMatches([]); }}
           onKeyDown={handleKeyDown}
           placeholder={isNote ? 'Add an internal note — not sent to customer…' : 'Type your reply… (press / for templates, ⌘↵ to send)'}
+          spellCheck={true}
+          lang="en-IN"
         />
 
+        {/* Grammar suggestions */}
+        {grammarMatches.length > 0 && (
+          <div className={styles.grammarPanel}>
+            <div className={styles.grammarHeader}>
+              <span className={styles.grammarTitle}>
+                {grammarMatches.length} suggestion{grammarMatches.length > 1 ? 's' : ''}
+              </span>
+              <button className={styles.grammarDismissAll} onClick={() => setGrammarMatches([])}>
+                Dismiss all
+              </button>
+            </div>
+            {grammarMatches.map((match, i) => (
+              <div key={i} className={styles.grammarMatch}>
+                <div className={styles.grammarMatchTop}>
+                  <span className={styles.grammarError}>
+                    "{replyText.slice(match.offset, match.offset + match.length)}"
+                  </span>
+                  <span className={styles.grammarArrow}>→</span>
+                  <span className={styles.grammarFix}>
+                    "{match.replacements[0]?.value}"
+                  </span>
+                </div>
+                <div className={styles.grammarMatchBottom}>
+                  <span className={styles.grammarMsg}>{match.message}</span>
+                  <div className={styles.grammarActions}>
+                    <button className={styles.grammarApply} onClick={() => handleApplyFix(match)}>
+                      Apply
+                    </button>
+                    <button className={styles.grammarIgnore} onClick={() => handleDismissFix(match)}>
+                      Ignore
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className={styles.replyBottom}>
-          <span className={styles.hint}>
-            {isNote ? '⚠ Internal note — not sent to customer' : `⌘↵ to send`}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className={styles.hint}>
+              {isNote ? '⚠ Internal note — not sent to customer' : `⌘↵ to send`}
+            </span>
+            {!isNote && replyText.trim().length >= 10 && (
+              <button
+                className={`${styles.grammarBtn} ${grammarLoading ? styles.grammarBtnLoading : ''} ${grammarMatches.length > 0 ? styles.grammarBtnActive : ''}`}
+                onClick={handleGrammarCheck}
+                disabled={grammarLoading}
+                title="Check grammar with LanguageTool"
+              >
+                {grammarLoading ? '…' : grammarMatches.length > 0 ? `${grammarMatches.length} issues` : '✓ Check grammar'}
+              </button>
+            )}
+          </div>
           <button
             className={`${styles.sendBtn} ${isNote ? styles.sendBtnNote : ''}`}
             onClick={handleSend}
@@ -486,7 +582,14 @@ function MessageBubble({ message, thread }) {
   return (
     <div className={`${styles.msgWrap} ${isOutbound ? styles.msgOutbound : styles.msgInbound}`}>
       <div className={`${styles.bubble} ${isOutbound ? styles.bubbleOut : styles.bubbleIn} ${isNote ? styles.bubbleNote : ''}`}>
-        <p className={styles.bubbleText}>{message.body}</p>
+        {message.body && <p className={styles.bubbleText}>{message.body}</p>}
+        {message.attachments?.length > 0 && (
+          <div className={styles.attachmentGrid}>
+            {message.attachments.map(att => (
+              <MessageImage key={att.id} attachment={att} />
+            ))}
+          </div>
+        )}
       </div>
       <div className={styles.bubbleMeta}>
         {isNote && <span className={styles.noteTag}>Internal note</span>}
@@ -494,6 +597,33 @@ function MessageBubble({ message, thread }) {
         {isOutbound && !isNote && <span className={styles.bubbleTime}>· You</span>}
       </div>
     </div>
+  );
+}
+
+function MessageImage({ attachment }) {
+  const [lightbox, setLightbox] = useState(false);
+  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const src = `${apiBase}/api/threads/attachment/${encodeURIComponent(attachment.attachment_id)}?gmailMessageId=${encodeURIComponent(attachment.gmail_message_id)}`;
+
+  return (
+    <>
+      <img
+        src={src}
+        alt={attachment.filename}
+        className={styles.attachmentThumb}
+        onClick={() => setLightbox(true)}
+        title={`${attachment.filename} — click to view full size`}
+      />
+      {lightbox && (
+        <div className={styles.lightbox} onClick={() => setLightbox(false)}>
+          <div className={styles.lightboxInner} onClick={e => e.stopPropagation()}>
+            <button className={styles.lightboxClose} onClick={() => setLightbox(false)}>✕</button>
+            <img src={src} alt={attachment.filename} className={styles.lightboxImg} />
+            <div className={styles.lightboxName}>{attachment.filename}</div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
