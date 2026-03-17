@@ -35,8 +35,14 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
     setGrammarMatches([]);
     try {
       const params = new URLSearchParams({
-        text:     replyText,
-        language: 'en-GB', // closest to Indian English — en-IN not supported by LanguageTool
+        text:              replyText,
+        language:          'en-GB',
+        enabledOnly:       'false',
+        // Enable extra rule categories for deeper checking
+        enabledCategories: 'GRAMMAR,TYPOS,CONFUSED_WORDS,REDUNDANCY,SEMANTICS,COLLOQUIALISMS,STYLE,PUNCTUATION',
+        // Disable overly nitpicky style-only rules
+        disabledRules:     'WHITESPACE_RULE,COMMA_PARENTHESIS_WHITESPACE,EN_QUOTES',
+        level:             'picky', // picky catches more issues than default
       });
       const res = await fetch('https://api.languagetool.org/v2/check', {
         method:  'POST',
@@ -48,10 +54,8 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
         throw new Error(`LanguageTool error ${res.status}: ${text}`);
       }
       const data = await res.json();
-      const filtered = (data.matches || []).filter(m =>
-        m.replacements?.length > 0 &&
-        m.rule?.issueType !== 'style'
-      );
+      // Show all matches with replacements — don't filter out style anymore
+      const filtered = (data.matches || []).filter(m => m.replacements?.length > 0);
       setGrammarMatches(filtered);
     } catch (err) {
       console.error('LanguageTool error:', err);
@@ -459,9 +463,17 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
                   <span className={styles.grammarFix}>
                     "{match.replacements[0]?.value}"
                   </span>
+                  {match.replacements.length > 1 && (
+                    <span className={styles.grammarMore}>
+                      +{match.replacements.length - 1} more
+                    </span>
+                  )}
                 </div>
                 <div className={styles.grammarMatchBottom}>
-                  <span className={styles.grammarMsg}>{match.message}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+                    <span className={styles.grammarMsg}>{match.message}</span>
+                    <span className={styles.grammarCategory}>{match.rule?.category?.name}</span>
+                  </div>
                   <div className={styles.grammarActions}>
                     <button className={styles.grammarApply} onClick={() => handleApplyFix(match)}>
                       Apply

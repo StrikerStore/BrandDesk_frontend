@@ -832,3 +832,18 @@
   cursor: pointer;
 }
 .grammarIgnore:hover { border-color: #9ca3af; }
+
+.grammarMore {
+  font-size: 10px;
+  color: #9ca3af;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--surface-2);
+}
+.grammarCategory {
+  font-size: 10px;
+  color: #b45309;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+}
