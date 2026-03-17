@@ -57,6 +57,9 @@ export const deleteView = (id)     => api.delete(`/api/views/${id}`);
 export const fetchOrder         = (orderId) => api.get(`/api/orders/${encodeURIComponent(orderId)}`);
 export const fetchOrdersByEmail = (email)   => api.get(`/api/orders/customer/${encodeURIComponent(email)}`);
 
+// AI text improvement (OpenRouter)
+export const improveText = (text, mode) => api.post('/api/ai/improve', { text, mode });
+
 // Settings
 export const fetchSettings   = ()       => api.get('/api/settings');
 export const updateSettings  = (data)   => api.patch('/api/settings', data);

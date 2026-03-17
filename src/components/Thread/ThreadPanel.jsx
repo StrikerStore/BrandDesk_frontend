@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useThread } from '../../hooks/useThread.js';
-import { fetchTemplates, trackTemplateUse, updateThread, resolveThread } from '../../utils/api.js';
+import { fetchTemplates, trackTemplateUse, updateThread, resolveThread, improveText } from '../../utils/api.js';
 import { formatFullTime, resolveTemplate, STATUS_CONFIG, PRIORITY_CONFIG, getBrandColor, statusSince } from '../../utils/helpers.js';
 import TemplateEditor from '../Templates/TemplateEditor.jsx';
 import styles from './ThreadPanel.module.css';
@@ -21,6 +21,8 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
   const [resolving, setResolving]           = useState(false);
   const [grammarMatches, setGrammarMatches] = useState([]);
   const [grammarLoading, setGrammarLoading] = useState(false);
+  const [aiLoading, setAiLoading]           = useState(null); // 'grammar' | 'professional' | null
+  const [aiOriginal, setAiOriginal]         = useState(null); // for undo
 
   // Pre-fill resolver name from last used
   const openResolveModal = () => {
@@ -77,6 +79,22 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
 
   const handleDismissFix = (match) => {
     setGrammarMatches(prev => prev.filter(m => m.offset !== match.offset));
+  };
+
+  const handleAiImprove = async (mode) => {
+    if (!replyText.trim() || aiLoading) return;
+    setAiLoading(mode);
+    setAiOriginal(replyText); // save for undo
+    setGrammarMatches([]);
+    try {
+      const { data } = await improveText(replyText, mode);
+      setReplyText(data.improved);
+    } catch (err) {
+      setAiOriginal(null);
+      console.error('AI improve failed:', err.message);
+    } finally {
+      setAiLoading(null);
+    }
   };
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
@@ -489,19 +507,48 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
         )}
 
         <div className={styles.replyBottom}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span className={styles.hint}>
-              {isNote ? '⚠ Internal note — not sent to customer' : `⌘↵ to send`}
+              {isNote ? '⚠ Internal note' : '⌘↵ to send'}
             </span>
             {!isNote && replyText.trim().length >= 10 && (
-              <button
-                className={`${styles.grammarBtn} ${grammarLoading ? styles.grammarBtnLoading : ''} ${grammarMatches.length > 0 ? styles.grammarBtnActive : ''}`}
-                onClick={handleGrammarCheck}
-                disabled={grammarLoading}
-                title="Check grammar with LanguageTool"
-              >
-                {grammarLoading ? '…' : grammarMatches.length > 0 ? `${grammarMatches.length} issues` : '✓ Check grammar'}
-              </button>
+              <>
+                <button
+                  className={`${styles.aiBtn} ${aiLoading === 'grammar' ? styles.aiBtnLoading : ''}`}
+                  onClick={() => handleAiImprove('grammar')}
+                  disabled={!!aiLoading}
+                  title="Fix grammar and spelling"
+                >
+                  {aiLoading === 'grammar' ? '…' : '✓ Fix grammar'}
+                </button>
+                <button
+                  className={`${styles.aiBtn} ${styles.aiBtnPro} ${aiLoading === 'professional' ? styles.aiBtnLoading : ''}`}
+                  onClick={() => handleAiImprove('professional')}
+                  disabled={!!aiLoading}
+                  title="Rewrite as professional customer support reply"
+                >
+                  {aiLoading === 'professional' ? '…' : '✨ Make professional'}
+                </button>
+                {aiOriginal && (
+                  <button
+                    className={styles.aiUndoBtn}
+                    onClick={() => { setReplyText(aiOriginal); setAiOriginal(null); }}
+                    title="Undo AI change"
+                  >
+                    ↩ Undo
+                  </button>
+                )}
+                {replyText.trim().length >= 10 && (
+                  <button
+                    className={`${styles.grammarBtn} ${grammarLoading ? styles.grammarBtnLoading : ''} ${grammarMatches.length > 0 ? styles.grammarBtnActive : ''}`}
+                    onClick={handleGrammarCheck}
+                    disabled={grammarLoading || !!aiLoading}
+                    title="Detailed grammar check with LanguageTool"
+                  >
+                    {grammarLoading ? '…' : grammarMatches.length > 0 ? `${grammarMatches.length} issues` : '⚙ Grammar check'}
+                  </button>
+                )}
+              </>
             )}
           </div>
           <button
