@@ -84,11 +84,19 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
   const handleAiImprove = async (mode) => {
     if (!replyText.trim() || aiLoading) return;
     setAiLoading(mode);
-    setAiOriginal(replyText); // save for undo
+    setAiOriginal(replyText);
     setGrammarMatches([]);
     try {
       const { data } = await improveText(replyText, mode);
-      setReplyText(data.improved);
+      // Strip markdown formatting — emails are plain text, asterisks look bad
+      const clean = data.improved
+        .replace(/\*\*(.*?)\*\*/g, '$1')  // **bold** → bold
+        .replace(/\*(.*?)\*/g, '$1')       // *italic* → italic
+        .replace(/_{1,2}(.*?)_{1,2}/g, '$1') // _italic_ → italic
+        .replace(/^#{1,6}\s+/gm, '')       // ## heading → heading
+        .replace(/`([^`]+)`/g, '$1')       // `code` → code
+        .trim();
+      setReplyText(clean);
     } catch (err) {
       setAiOriginal(null);
       console.error('AI improve failed:', err.message);
