@@ -36,13 +36,17 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
     try {
       const params = new URLSearchParams({
         text:     replyText,
-        language: 'en-IN',
+        language: 'en-GB', // closest to Indian English — en-IN not supported by LanguageTool
       });
       const res = await fetch('https://api.languagetool.org/v2/check', {
         method:  'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body:    params.toString(),
       });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`LanguageTool error ${res.status}: ${text}`);
+      }
       const data = await res.json();
       const filtered = (data.matches || []).filter(m =>
         m.replacements?.length > 0 &&
@@ -432,7 +436,6 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
           onKeyDown={handleKeyDown}
           placeholder={isNote ? 'Add an internal note — not sent to customer…' : 'Type your reply… (press / for templates, ⌘↵ to send)'}
           spellCheck={true}
-          lang="en-IN"
         />
 
         {/* Grammar suggestions */}
