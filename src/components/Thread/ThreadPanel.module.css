@@ -187,6 +187,8 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+.bubbleText a { text-decoration: underline; opacity: 0.9; }
+.bubbleText a:hover { opacity: 1; }
 
 .bubbleMeta {
   display: flex;

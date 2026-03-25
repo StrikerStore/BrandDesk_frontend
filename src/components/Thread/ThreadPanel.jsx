@@ -799,7 +799,11 @@ function MessageBubble({ message, thread }) {
   return (
     <div className={`${styles.msgWrap} ${isOutbound ? styles.msgOutbound : styles.msgInbound}`}>
       <div className={`${styles.bubble} ${isOutbound ? styles.bubbleOut : styles.bubbleIn} ${isNote ? styles.bubbleNote : ''}`}>
-        {message.body && <p className={styles.bubbleText}>{message.body}</p>}
+        {message.body && (
+          isOutbound
+            ? <p className={styles.bubbleText} dangerouslySetInnerHTML={{ __html: message.body }} />
+            : <p className={styles.bubbleText}>{message.body}</p>
+        )}
         {message.attachments?.length > 0 && (
           <div className={styles.attachmentGrid}>
             {message.attachments.map(att => (
