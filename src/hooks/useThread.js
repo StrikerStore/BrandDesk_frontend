@@ -61,6 +61,7 @@ export function useThread(threadId) {
         is_note: isNote ? 1 : 0,
         sent_at: new Date().toISOString(),
         from_email: 'you',
+        _attachmentNames: attachments.map(f => ({ name: f.name, size: f.size, type: f.type })),
       };
       setMessages(prev => [...prev, newMsg]);
 

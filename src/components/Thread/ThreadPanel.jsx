@@ -27,7 +27,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
   const [isExpanded, setIsExpanded]         = useState(false);
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [linkUrl, setLinkUrl]               = useState('');
-  const [linkSel, setLinkSel]               = useState({ start: 0, end: 0 });
+  const savedRangeRef                       = useRef(null); // saved selection for link insert
 
   // Pre-fill resolver name from last used
   const openResolveModal = () => {
@@ -89,19 +89,20 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
   const handleAiImprove = async (mode) => {
     if (!replyText.trim() || aiLoading) return;
     setAiLoading(mode);
-    setAiOriginal(replyText);
+    // Save original HTML so undo restores formatting too
+    setAiOriginal(textareaRef.current?.innerHTML || replyText);
     setGrammarMatches([]);
     try {
       const { data } = await improveText(replyText, mode);
-      // Strip markdown formatting — emails are plain text, asterisks look bad
       const clean = data.improved
-        .replace(/\*\*(.*?)\*\*/g, '$1')  // **bold** → bold
-        .replace(/\*(.*?)\*/g, '$1')       // *italic* → italic
-        .replace(/_{1,2}(.*?)_{1,2}/g, '$1') // _italic_ → italic
-        .replace(/^#{1,6}\s+/gm, '')       // ## heading → heading
-        .replace(/`([^`]+)`/g, '$1')       // `code` → code
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/_{1,2}(.*?)_{1,2}/g, '$1')
+        .replace(/^#{1,6}\s+/gm, '')
+        .replace(/`([^`]+)`/g, '$1')
+        .replace(/\n/g, '<br>')
         .trim();
-      setReplyText(clean);
+      setEditorContent(clean);
     } catch (err) {
       setAiOriginal(null);
       console.error('AI improve failed:', err.message);
@@ -109,30 +110,25 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
       setAiLoading(null);
     }
   };
-  // ── Formatting helpers ──────────────────────────────────────────────────────
-  const wrapSelection = (openTag, closeTag) => {
+  // ── Editor helpers ───────────────────────────────────────────────────────────
+  // Programmatically set the contentEditable HTML and sync shadow state
+  const setEditorContent = (html) => {
     const el = textareaRef.current;
     if (!el) return;
-    const start = el.selectionStart;
-    const end   = el.selectionEnd;
-    const selected = replyText.slice(start, end);
-    const newText = replyText.slice(0, start) + openTag + selected + closeTag + replyText.slice(end);
-    setReplyText(newText);
+    el.innerHTML = html;
+    setReplyText(el.innerText);
     setGrammarMatches([]);
-    setTimeout(() => {
-      el.focus();
-      el.setSelectionRange(start + openTag.length, end + openTag.length);
-    }, 0);
   };
 
-  const handleFormatBold      = () => wrapSelection('<strong>', '</strong>');
-  const handleFormatItalic    = () => wrapSelection('<em>', '</em>');
-  const handleFormatUnderline = () => wrapSelection('<u>', '</u>');
+  // ── Formatting (execCommand works natively with contentEditable) ─────────────
+  const handleFormatBold      = () => { textareaRef.current?.focus(); document.execCommand('bold',      false); };
+  const handleFormatItalic    = () => { textareaRef.current?.focus(); document.execCommand('italic',    false); };
+  const handleFormatUnderline = () => { textareaRef.current?.focus(); document.execCommand('underline', false); };
 
   const handleFormatLink = () => {
-    const el = textareaRef.current;
-    if (!el) return;
-    setLinkSel({ start: el.selectionStart, end: el.selectionEnd });
+    // Save the current selection so we can restore it after the dialog opens
+    const sel = window.getSelection();
+    savedRangeRef.current = sel?.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
     setLinkUrl('');
     setShowLinkDialog(true);
   };
@@ -141,12 +137,18 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
     const url = linkUrl.trim();
     if (!url) { setShowLinkDialog(false); return; }
     const href = url.startsWith('http') ? url : `https://${url}`;
-    const selected = replyText.slice(linkSel.start, linkSel.end) || href;
-    const newText  = replyText.slice(0, linkSel.start) + `<a href="${href}">${selected}</a>` + replyText.slice(linkSel.end);
-    setReplyText(newText);
-    setGrammarMatches([]);
     setShowLinkDialog(false);
-    setTimeout(() => textareaRef.current?.focus(), 0);
+    textareaRef.current?.focus();
+    // Restore saved selection then insert link
+    if (savedRangeRef.current) {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedRangeRef.current);
+    }
+    document.execCommand('createLink', false, href);
+    // Make links open in new tab
+    textareaRef.current?.querySelectorAll('a').forEach(a => a.setAttribute('target', '_blank'));
+    setReplyText(textareaRef.current?.innerText || '');
   };
 
   // ── Attachment helpers ───────────────────────────────────────────────────────
@@ -210,6 +212,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
 
   // Reset compose on thread change
   useEffect(() => {
+    if (textareaRef.current) textareaRef.current.innerHTML = '';
     setReplyText('');
     setIsNote(false);
     setShowTemplates(false);
@@ -236,23 +239,24 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
       e.preventDefault();
       handleSend();
     }
-    if (e.key === '/' && replyText === '') {
+    if (e.key === '/' && textareaRef.current?.innerText.trim() === '') {
       e.preventDefault();
       setShowTemplates(true);
     }
   };
 
   const handleSend = async () => {
+    const htmlBody = textareaRef.current?.innerHTML || '';
     if (!replyText.trim() || sending) return;
     const ok = await reply({
-      body: replyText,
+      body: htmlBody,
       isNote,
       brandName: thread?.brand,
       gmailThreadId: thread?.gmail_thread_id,
       attachments,
     });
     if (ok) {
-      setReplyText('');
+      setEditorContent('');
       setIsNote(false);
       setAttachments([]);
       // Auto advance: open → in_progress on first real reply
@@ -286,7 +290,10 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
       trackingUrl,
       trackingLink: trackingUrl,
     };
-    setReplyText(resolveTemplate(tpl.body, vars));
+    // Convert plain text template to HTML (preserve line breaks)
+    const resolved = resolveTemplate(tpl.body, vars);
+    const html = resolved.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    setEditorContent(html);
     setShowTemplates(false);
     await trackTemplateUse(tpl.id);
     textareaRef.current?.focus();
@@ -578,13 +585,14 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
         )}
 
         <div className={styles.textareaWrap}>
-          <textarea
+          <div
             ref={textareaRef}
-            className={`${styles.textarea} ${isNote ? styles.textareaNote : ''} ${isExpanded ? styles.textareaExpanded : ''}`}
-            value={replyText}
-            onChange={e => { setReplyText(e.target.value); setGrammarMatches([]); }}
+            contentEditable
+            suppressContentEditableWarning
+            className={`${styles.textarea} ${styles.textareaEditor} ${isNote ? styles.textareaNote : ''} ${isExpanded ? styles.textareaExpanded : ''}`}
+            onInput={e => { setReplyText(e.currentTarget.innerText); setGrammarMatches([]); }}
             onKeyDown={handleKeyDown}
-            placeholder={isNote ? 'Add an internal note — not sent to customer…' : 'Type your reply… (press / for templates, ⌘↵ to send)'}
+            data-placeholder={isNote ? 'Add an internal note — not sent to customer…' : 'Type your reply… (press / for templates, ⌘↵ to send)'}
             spellCheck={true}
           />
           <button
@@ -687,7 +695,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
                 {aiOriginal && (
                   <button
                     className={styles.aiUndoBtn}
-                    onClick={() => { setReplyText(aiOriginal); setAiOriginal(null); }}
+                    onClick={() => { setEditorContent(aiOriginal); setAiOriginal(null); }}
                     title="Undo AI change"
                   >
                     ↩ Undo
@@ -808,6 +816,19 @@ function MessageBubble({ message, thread }) {
           <div className={styles.attachmentGrid}>
             {message.attachments.map(att => (
               <MessageImage key={att.id} attachment={att} />
+            ))}
+          </div>
+        )}
+        {message._attachmentNames?.length > 0 && (
+          <div className={styles.sentAttachList}>
+            {message._attachmentNames.map((f, i) => (
+              <div key={i} className={styles.sentAttachItem}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+                </svg>
+                <span>{f.name}</span>
+                <span className={styles.sentAttachSize}>{f.size < 1024*1024 ? `${(f.size/1024).toFixed(1)} KB` : `${(f.size/1024/1024).toFixed(1)} MB`}</span>
+              </div>
             ))}
           </div>
         )}
