@@ -37,10 +37,21 @@ export function useThread(threadId) {
     }
   }, [thread]);
 
-  const reply = useCallback(async ({ body, isNote, brandName, gmailThreadId }) => {
+  const reply = useCallback(async ({ body, isNote, brandName, gmailThreadId, attachments = [] }) => {
     setSending(true);
     try {
-      await apiSendReply(gmailThreadId, { body, isNote: !!isNote, brandName });
+      let payload;
+      if (attachments.length > 0) {
+        const fd = new FormData();
+        fd.append('body', body);
+        fd.append('isNote', isNote ? 'true' : 'false');
+        fd.append('brandName', brandName || '');
+        attachments.forEach(f => fd.append('attachments', f));
+        payload = fd;
+      } else {
+        payload = { body, isNote: !!isNote, brandName };
+      }
+      await apiSendReply(gmailThreadId, payload);
 
       // Append to local messages optimistically
       const newMsg = {

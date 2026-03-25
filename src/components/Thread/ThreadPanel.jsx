@@ -23,6 +23,11 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
   const [grammarLoading, setGrammarLoading] = useState(false);
   const [aiLoading, setAiLoading]           = useState(null); // 'grammar' | 'professional' | null
   const [aiOriginal, setAiOriginal]         = useState(null); // for undo
+  const [attachments, setAttachments]       = useState([]); // File[]
+  const [isExpanded, setIsExpanded]         = useState(false);
+  const [showLinkDialog, setShowLinkDialog] = useState(false);
+  const [linkUrl, setLinkUrl]               = useState('');
+  const [linkSel, setLinkSel]               = useState({ start: 0, end: 0 });
 
   // Pre-fill resolver name from last used
   const openResolveModal = () => {
@@ -104,9 +109,65 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
       setAiLoading(null);
     }
   };
-  const messagesEndRef = useRef(null);
-  const textareaRef    = useRef(null);
-  const tplRef         = useRef(null);
+  // ── Formatting helpers ──────────────────────────────────────────────────────
+  const wrapSelection = (openTag, closeTag) => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart;
+    const end   = el.selectionEnd;
+    const selected = replyText.slice(start, end);
+    const newText = replyText.slice(0, start) + openTag + selected + closeTag + replyText.slice(end);
+    setReplyText(newText);
+    setGrammarMatches([]);
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + openTag.length, end + openTag.length);
+    }, 0);
+  };
+
+  const handleFormatBold      = () => wrapSelection('<strong>', '</strong>');
+  const handleFormatItalic    = () => wrapSelection('<em>', '</em>');
+  const handleFormatUnderline = () => wrapSelection('<u>', '</u>');
+
+  const handleFormatLink = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    setLinkSel({ start: el.selectionStart, end: el.selectionEnd });
+    setLinkUrl('');
+    setShowLinkDialog(true);
+  };
+
+  const confirmLink = () => {
+    const url = linkUrl.trim();
+    if (!url) { setShowLinkDialog(false); return; }
+    const href = url.startsWith('http') ? url : `https://${url}`;
+    const selected = replyText.slice(linkSel.start, linkSel.end) || href;
+    const newText  = replyText.slice(0, linkSel.start) + `<a href="${href}">${selected}</a>` + replyText.slice(linkSel.end);
+    setReplyText(newText);
+    setGrammarMatches([]);
+    setShowLinkDialog(false);
+    setTimeout(() => textareaRef.current?.focus(), 0);
+  };
+
+  // ── Attachment helpers ───────────────────────────────────────────────────────
+  const handleAttachFiles = (e) => {
+    const files = Array.from(e.target.files || []);
+    setAttachments(prev => [...prev, ...files]);
+    e.target.value = '';
+  };
+
+  const removeAttachment = (idx) => setAttachments(prev => prev.filter((_, i) => i !== idx));
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const messagesEndRef  = useRef(null);
+  const textareaRef     = useRef(null);
+  const tplRef          = useRef(null);
+  const attachInputRef  = useRef(null);
 
   const threadTags = (() => {
     const raw = thread?.tags;
@@ -152,6 +213,8 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
     setReplyText('');
     setIsNote(false);
     setShowTemplates(false);
+    setAttachments([]);
+    setIsExpanded(false);
   }, [threadId]);
 
   // Load templates once
@@ -186,10 +249,12 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
       isNote,
       brandName: thread?.brand,
       gmailThreadId: thread?.gmail_thread_id,
+      attachments,
     });
     if (ok) {
       setReplyText('');
       setIsNote(false);
+      setAttachments([]);
       // Auto advance: open → in_progress on first real reply
       if (!isNote && thread?.status === 'open') {
         applyUpdate({ status: 'in_progress' });
@@ -448,6 +513,61 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
           <span className={styles.replyingAs}>Replying as {thread.brand_email}</span>
         </div>
 
+        {/* Formatting + attachment toolbar */}
+        <div className={styles.formatBar}>
+          <button className={styles.fmtBtn} title="Bold" onMouseDown={e => { e.preventDefault(); handleFormatBold(); }}>
+            <strong>B</strong>
+          </button>
+          <button className={styles.fmtBtn} title="Italic" onMouseDown={e => { e.preventDefault(); handleFormatItalic(); }}>
+            <em>I</em>
+          </button>
+          <button className={styles.fmtBtn} title="Underline" onMouseDown={e => { e.preventDefault(); handleFormatUnderline(); }}>
+            <u>U</u>
+          </button>
+          <button className={styles.fmtBtn} title="Hyperlink" onMouseDown={e => { e.preventDefault(); handleFormatLink(); }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+            </svg>
+          </button>
+          <div className={styles.fmtSep} />
+          <button
+            className={styles.fmtBtn}
+            title="Attach file"
+            onClick={() => attachInputRef.current?.click()}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+            </svg>
+            Attach
+          </button>
+          <input
+            ref={attachInputRef}
+            type="file"
+            multiple
+            accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
+            style={{ display: 'none' }}
+            onChange={handleAttachFiles}
+          />
+        </div>
+
+        {/* Link dialog */}
+        {showLinkDialog && (
+          <div className={styles.linkDialog}>
+            <span className={styles.linkDialogLabel}>URL</span>
+            <input
+              className={styles.linkDialogInput}
+              autoFocus
+              placeholder="https://example.com"
+              value={linkUrl}
+              onChange={e => setLinkUrl(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') confirmLink(); if (e.key === 'Escape') setShowLinkDialog(false); }}
+            />
+            <button className={styles.linkDialogOk} onClick={confirmLink}>Insert</button>
+            <button className={styles.linkDialogCancel} onClick={() => setShowLinkDialog(false)}>✕</button>
+          </div>
+        )}
+
         {showTemplateEditor && (
           <TemplateEditor
             onClose={() => {
@@ -457,16 +577,43 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
           />
         )}
 
-        <textarea
-          ref={textareaRef}
-          className={`${styles.textarea} ${isNote ? styles.textareaNote : ''}`}
-          rows={4}
-          value={replyText}
-          onChange={e => { setReplyText(e.target.value); setGrammarMatches([]); }}
-          onKeyDown={handleKeyDown}
-          placeholder={isNote ? 'Add an internal note — not sent to customer…' : 'Type your reply… (press / for templates, ⌘↵ to send)'}
-          spellCheck={true}
-        />
+        <div className={styles.textareaWrap}>
+          <textarea
+            ref={textareaRef}
+            className={`${styles.textarea} ${isNote ? styles.textareaNote : ''} ${isExpanded ? styles.textareaExpanded : ''}`}
+            value={replyText}
+            onChange={e => { setReplyText(e.target.value); setGrammarMatches([]); }}
+            onKeyDown={handleKeyDown}
+            placeholder={isNote ? 'Add an internal note — not sent to customer…' : 'Type your reply… (press / for templates, ⌘↵ to send)'}
+            spellCheck={true}
+          />
+          <button
+            className={styles.expandBtn}
+            title={isExpanded ? 'Collapse' : 'Expand'}
+            onClick={() => setIsExpanded(v => !v)}
+          >
+            {isExpanded
+              ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 14l6-6 6 6"/></svg>
+              : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 10l6 6 6-6"/></svg>
+            }
+          </button>
+        </div>
+
+        {/* Attachment list */}
+        {attachments.length > 0 && (
+          <div className={styles.attachList}>
+            {attachments.map((file, idx) => (
+              <div key={idx} className={styles.attachItem}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+                </svg>
+                <span className={styles.attachName}>{file.name}</span>
+                <span className={styles.attachSize}>{formatFileSize(file.size)}</span>
+                <button className={styles.attachRemove} onClick={() => removeAttachment(idx)}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Grammar suggestions */}
         {grammarMatches.length > 0 && (

@@ -18,7 +18,10 @@ export const fetchThreads     = (params = {}) => api.get('/api/threads', { param
 export const fetchThread      = (id)          => api.get(`/api/threads/${id}`);
 export const updateThread     = (id, data)    => api.patch(`/api/threads/${id}`, data);
 export const resolveThread    = (id, data)    => api.post(`/api/threads/${id}/resolve`, data);
-export const sendReply        = (gmailId, data) => api.post(`/api/threads/${gmailId}/reply`, data);
+export const sendReply        = (gmailId, data) => {
+  const isFormData = data instanceof FormData;
+  return api.post(`/api/threads/${gmailId}/reply`, data, isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {});
+};
 export const syncThreads      = ()            => api.post('/api/sync');
 export const fullSyncThreads  = ()            => api.post('/api/sync?full=true');
 export const fetchStats       = ()            => api.get('/api/threads/stats/overview');
