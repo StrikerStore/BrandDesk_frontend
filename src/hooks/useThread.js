@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchThread, updateThread, sendReply as apiSendReply } from '../utils/api';
+
+const POLL_INTERVAL = 30000; // 30 seconds
 
 export function useThread(threadId) {
   const [thread, setThread] = useState(null);
@@ -7,25 +9,35 @@ export function useThread(threadId) {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
+  const pollRef = useRef(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     if (!threadId) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const { data } = await fetchThread(threadId);
       setThread(data.thread);
       setMessages(data.messages || []);
       setError(null);
     } catch (err) {
-      setError(err.response?.data?.error || err.message);
+      // Don't overwrite error on silent poll failures
+      if (!silent) setError(err.response?.data?.error || err.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [threadId]);
 
+  // Initial load when thread changes
   useEffect(() => {
     load();
   }, [load]);
+
+  // Poll for new messages every 30s so customer replies appear automatically
+  useEffect(() => {
+    if (!threadId) return;
+    pollRef.current = setInterval(() => load(true), POLL_INTERVAL);
+    return () => clearInterval(pollRef.current);
+  }, [threadId, load]);
 
   const patchStatus = useCallback(async (status) => {
     if (!thread) return;
