@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar/Sidebar.jsx';
 import ThreadPanel from '../components/Thread/ThreadPanel.jsx';
 import CustomerPanel from '../components/Customer/CustomerPanel.jsx';
 import Dashboard from '../components/Dashboard/Dashboard.jsx';
+import NewTicketModal from '../components/NewTicket/NewTicketModal.jsx';
 import styles from './InboxPage.module.css';
 
 const SIDEBAR_MIN = 220;
@@ -21,12 +22,13 @@ export default function InboxPage({ user, onLogout }) {
   const [sidebarW, setSidebarW]                 = useState(SIDEBAR_DEFAULT);
   const [customerW, setCustomerW]               = useState(CUSTOMER_DEFAULT);
   const [showAnalytics, setShowAnalytics]       = useState(false);
+  const [showNewTicket, setShowNewTicket]       = useState(false);
 
   const draggingRef = useRef(null);
   const startXRef   = useRef(0);
   const startWRef   = useRef(0);
 
-  const { threads, loading, loadingMore, syncing, hasMore, sync, fullSync, loadMore, updateThreadLocal, removeThreadLocal } = useThreads(
+  const { threads, loading, loadingMore, syncing, hasMore, sync, fullSync, loadMore, reload, updateThreadLocal, removeThreadLocal } = useThreads(
     (() => {
       const { search, ...rest } = filters;
       const params = { ...rest };
@@ -100,6 +102,7 @@ export default function InboxPage({ user, onLogout }) {
           onFullSync={fullSync}
           onLoadMore={loadMore}
           onAnalytics={() => setShowAnalytics(true)}
+          onNewTicket={() => setShowNewTicket(true)}
           user={user}
           onLogout={onLogout}
         />
@@ -131,6 +134,18 @@ export default function InboxPage({ user, onLogout }) {
         <Dashboard
           onClose={() => setShowAnalytics(false)}
           sidebarWidth={sidebarW}
+        />
+      )}
+
+      {/* New ticket modal */}
+      {showNewTicket && (
+        <NewTicketModal
+          brands={brands}
+          onClose={() => setShowNewTicket(false)}
+          onCreated={(thread) => {
+            setSelectedThreadId(thread.id);
+            reload();
+          }}
         />
       )}
     </div>

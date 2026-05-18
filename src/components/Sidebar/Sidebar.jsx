@@ -8,7 +8,7 @@ import logo from '../../assets/logo.png';
 
 export default function Sidebar({
   threads, loading, loadingMore, hasMore, syncing, brands, filters,
-  onFilterChange, selectedId, onSelect, onSync, onFullSync, onLoadMore, onAnalytics, user, onLogout,
+  onFilterChange, selectedId, onSelect, onSync, onFullSync, onLoadMore, onAnalytics, onNewTicket, user, onLogout,
 }) {
   const [showUserMenu, setShowUserMenu]   = useState(false);
   const [showSettings, setShowSettings]   = useState(false);
@@ -163,6 +163,12 @@ export default function Sidebar({
             <span className={styles.logoText}>BrandDesk</span>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
+            <button className={styles.iconBtn} onClick={onNewTicket} title="Raise ticket for customer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4z"/>
+              </svg>
+            </button>
             <button className={styles.iconBtn} onClick={onSync} disabled={syncing} title="Sync emails">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
                 style={{ animation: syncing ? 'spin 1s linear infinite' : 'none' }}>

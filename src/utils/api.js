@@ -21,6 +21,7 @@ export const resolveThread    = (id, data)    => api.post(`/api/threads/${id}/re
 // Let axios auto-set Content-Type (including boundary) for FormData; don't override it.
 export const sendReply = (gmailId, data) => api.post(`/api/threads/${gmailId}/reply`, data);
 export const syncThreads      = ()            => api.post('/api/sync');
+export const createManualThread = (data)      => api.post('/api/threads/manual', data);
 export const fullSyncThreads  = ()            => api.post('/api/sync?full=true');
 export const fetchStats       = ()            => api.get('/api/threads/stats/overview');
 

@@ -447,6 +447,19 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
 
       {/* Reply area */}
       <div className={styles.replyArea}>
+        {/* Manual ticket notice */}
+        {thread?.gmail_thread_id?.startsWith('manual_') && (
+          <div style={{
+            fontSize: 12, color: '#1d4ed8', background: '#eff6ff',
+            borderBottom: '1px solid #bfdbfe', padding: '7px 14px',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+              <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+            </svg>
+            Manual ticket — replies are saved internally and not sent via email.
+          </div>
+        )}
         {/* Template picker */}
         {showTemplates && (
           <div className={styles.tplPicker} ref={tplRef}>

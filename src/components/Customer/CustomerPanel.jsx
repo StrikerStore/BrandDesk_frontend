@@ -80,7 +80,13 @@ export default function CustomerPanel({ threadId }) {
     <div className={styles.root}>
       <div className={styles.panelHeader}>
         <span>Customer</span>
-        {thread?.is_shopify_form ? <span className={styles.parsedBadge}>Auto-parsed</span> : null}
+        {thread?.is_manual ? (
+          <span className={styles.parsedBadge} style={{ background: '#eff6ff', color: '#1d4ed8', borderColor: '#93c5fd' }}>
+            Manual ticket
+          </span>
+        ) : thread?.is_shopify_form ? (
+          <span className={styles.parsedBadge}>Auto-parsed</span>
+        ) : null}
       </div>
 
       <div className={styles.body}>
