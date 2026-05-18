@@ -23,6 +23,7 @@ export default function NewTicketModal({ brands, onClose, onCreated }) {
     subject: '',
     priority: 'normal',
     issue_category: '',
+    sub_issue: '',
     order_number: '',
     description: '',
   });
@@ -134,22 +135,32 @@ export default function NewTicketModal({ brands, onClose, onCreated }) {
               </select>
             </div>
             <div className={styles.field}>
-              <label className={styles.label}>Order number</label>
+              <label className={styles.label}>Sub-issue</label>
               <input
                 className={styles.input}
-                placeholder="e.g. 10045"
-                value={form.order_number}
-                onChange={set('order_number')}
+                placeholder="e.g. Delayed by courier"
+                value={form.sub_issue}
+                onChange={set('sub_issue')}
               />
             </div>
           </div>
 
           <div className={styles.field}>
-            <label className={styles.label}>Description <span className={styles.req}>*</span></label>
+            <label className={styles.label}>Order number</label>
+            <input
+              className={styles.input}
+              placeholder="e.g. 10045"
+              value={form.order_number}
+              onChange={set('order_number')}
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label}>Initial message to customer <span className={styles.req}>*</span></label>
             <textarea
               className={styles.textarea}
-              placeholder="Describe the customer's issue in detail…"
-              rows={4}
+              placeholder="Write the message you want to send to the customer. A ticket reference will be appended automatically."
+              rows={5}
               value={form.description}
               onChange={set('description')}
               required
