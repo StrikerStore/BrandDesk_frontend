@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchSettings, updateSettings, testAutoAck, testAutoClose, fetchUsers, createUser, updateUser, deactivateUser, updateCurrentUser } from '../../utils/api.js';
+import { fetchSettings, updateSettings, testAutoAck, testAutoClose, testAutoResolve, fetchUsers, createUser, updateUser, deactivateUser, updateCurrentUser } from '../../utils/api.js';
 import styles from './Settings.module.css';
 
 export default function Settings({ onClose, user }) {
@@ -94,7 +94,7 @@ export default function Settings({ onClose, user }) {
     setTesting(type);
     setTestResult(null);
     try {
-      const fn = type === 'ack' ? testAutoAck : testAutoClose;
+      const fn = type === 'ack' ? testAutoAck : type === 'resolve' ? testAutoResolve : testAutoClose;
       const { data } = await fn();
       setTestResult({ ok: true, msg: data.message });
     } catch (err) {
@@ -253,6 +253,53 @@ export default function Settings({ onClose, user }) {
                     disabled={testing === 'close'}
                   >
                     {testing === 'close' ? 'Running…' : 'Test now — close eligible tickets'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Auto-resolve in-progress */}
+            <div className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <div className={styles.sectionTitle}>Auto-resolve in-progress tickets</div>
+                  <div className={styles.sectionDesc}>
+                    Automatically resolve in-progress tickets where we sent a reply but the customer
+                    hasn't responded within N days. Runs daily at 1 AM and adds a system comment.
+                  </div>
+                </div>
+                <Toggle
+                  value={settings?.auto_resolve_enabled === 'true'}
+                  onChange={v => set('auto_resolve_enabled', v ? 'true' : 'false')}
+                />
+              </div>
+
+              {settings?.auto_resolve_enabled === 'true' && (
+                <div className={styles.subSettings}>
+                  <div className={styles.fieldRow}>
+                    <label className={styles.fieldLabel}>Resolve after</label>
+                    <div className={styles.fieldInput}>
+                      <input
+                        type="number"
+                        min="1"
+                        max="90"
+                        className={styles.numInput}
+                        value={settings?.auto_resolve_days || 7}
+                        onChange={e => set('auto_resolve_days', e.target.value)}
+                      />
+                      <span className={styles.fieldUnit}>days with no customer reply</span>
+                    </div>
+                  </div>
+                  <div className={styles.fieldNote}>
+                    Only applies to in-progress tickets where at least one outbound message has been sent.
+                    No inbound reply from the customer within the above window triggers auto-resolve.
+                  </div>
+                  <button
+                    className={styles.testBtn}
+                    onClick={() => handleTest('resolve')}
+                    disabled={testing === 'resolve'}
+                  >
+                    {testing === 'resolve' ? 'Running…' : 'Test now — resolve eligible tickets'}
                   </button>
                 </div>
               )}

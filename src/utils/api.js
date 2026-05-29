@@ -67,6 +67,7 @@ export const fetchSettings   = ()       => api.get('/api/settings');
 export const updateSettings  = (data)   => api.patch('/api/settings', data);
 export const testAutoAck     = ()       => api.post('/api/settings/test-auto-ack');
 export const testAutoClose   = ()       => api.post('/api/settings/test-auto-close');
+export const testAutoResolve = ()       => api.post('/api/settings/test-auto-resolve');
 
 // User management (admin only)
 export const fetchUsers      = ()         => api.get('/api/users');
