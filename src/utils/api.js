@@ -66,7 +66,6 @@ export const improveText = (text, mode) => api.post('/api/ai/improve', { text, m
 export const fetchSettings   = ()       => api.get('/api/settings');
 export const updateSettings  = (data)   => api.patch('/api/settings', data);
 export const testAutoAck     = ()       => api.post('/api/settings/test-auto-ack');
-export const testAutoClose   = ()       => api.post('/api/settings/test-auto-close');
 export const testAutoResolve = ()       => api.post('/api/settings/test-auto-resolve');
 
 // User management (admin only)

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { fetchSettings, updateSettings, testAutoAck, testAutoClose, testAutoResolve, fetchUsers, createUser, updateUser, deactivateUser, updateCurrentUser } from '../../utils/api.js';
+import { fetchSettings, updateSettings, testAutoAck, testAutoResolve, fetchUsers, createUser, updateUser, deactivateUser, updateCurrentUser } from '../../utils/api.js';
 import styles from './Settings.module.css';
 
 export default function Settings({ onClose, user }) {
@@ -94,7 +94,7 @@ export default function Settings({ onClose, user }) {
     setTesting(type);
     setTestResult(null);
     try {
-      const fn = type === 'ack' ? testAutoAck : type === 'resolve' ? testAutoResolve : testAutoClose;
+      const fn = type === 'ack' ? testAutoAck : testAutoResolve;
       const { data } = await fn();
       setTestResult({ ok: true, msg: data.message });
     } catch (err) {
@@ -215,49 +215,6 @@ export default function Settings({ onClose, user }) {
               )}
             </div>
 
-            {/* Auto-close */}
-            <div className={styles.section}>
-              <div className={styles.sectionHeader}>
-                <div>
-                  <div className={styles.sectionTitle}>Auto-close stale resolved tickets</div>
-                  <div className={styles.sectionDesc}>
-                    Archive resolved tickets where the customer hasn't replied after N days.
-                    Runs daily at midnight.
-                  </div>
-                </div>
-                <Toggle
-                  value={settings?.auto_close_enabled === 'true'}
-                  onChange={v => set('auto_close_enabled', v ? 'true' : 'false')}
-                />
-              </div>
-
-              {settings?.auto_close_enabled === 'true' && (
-                <div className={styles.subSettings}>
-                  <div className={styles.fieldRow}>
-                    <label className={styles.fieldLabel}>Close after</label>
-                    <div className={styles.fieldInput}>
-                      <input
-                        type="number"
-                        min="1"
-                        max="90"
-                        className={styles.numInput}
-                        value={settings?.auto_close_days || 7}
-                        onChange={e => set('auto_close_days', e.target.value)}
-                      />
-                      <span className={styles.fieldUnit}>days with no customer reply</span>
-                    </div>
-                  </div>
-                  <button
-                    className={styles.testBtn}
-                    onClick={() => handleTest('close')}
-                    disabled={testing === 'close'}
-                  >
-                    {testing === 'close' ? 'Running…' : 'Test now — close eligible tickets'}
-                  </button>
-                </div>
-              )}
-            </div>
-
             {/* Auto-resolve in-progress */}
             <div className={styles.section}>
               <div className={styles.sectionHeader}>
@@ -299,7 +256,7 @@ export default function Settings({ onClose, user }) {
                     onClick={() => handleTest('resolve')}
                     disabled={testing === 'resolve'}
                   >
-                    {testing === 'resolve' ? 'Running…' : 'Test now — resolve eligible tickets'}
+                    {testing === 'resolve' ? 'Running…' : 'Run Auto-Resolve'}
                   </button>
                 </div>
               )}
