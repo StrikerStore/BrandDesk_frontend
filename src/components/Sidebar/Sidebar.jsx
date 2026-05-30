@@ -252,7 +252,7 @@ export default function Sidebar({
         <input
           ref={searchRef}
           className={styles.searchInput}
-          placeholder="Search… (⌘K)"
+          placeholder="Search or #tag… (⌘K)"
           value={searchVal}
           onChange={e => handleSearchChange(e.target.value)}
           onKeyDown={handleSearchKey}
