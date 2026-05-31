@@ -130,49 +130,52 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
             ) : (
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel}>
-                  Pickup Jersey Name
+                  Pickup Jersey(s)
                   <span className={styles.fieldRequired}>*</span>
                 </label>
-                <input
+                <textarea
                   autoFocus
-                  className={styles.fieldInput}
-                  placeholder="e.g. Messi Argentina 2024 — Size L"
+                  className={styles.fieldTextarea}
+                  placeholder={'e.g. Messi Argentina 2024 — Size L\nRonaldo Portugal 2024 — Size M'}
                   value={form.pickup_jersey}
                   onChange={e => setForm(f => ({ ...f, pickup_jersey: e.target.value }))}
+                  rows={3}
                 />
-                <p className={styles.fieldHint}>Jersey to be picked up from the customer</p>
+                <p className={styles.fieldHint}>Jersey(s) to be picked up — one per line if multiple</p>
               </div>
             )}
 
             {selectedType === 'exchange' && (
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel}>
-                  Exchange Jersey Name
+                  Exchange Jersey(s)
                   <span className={styles.fieldRequired}>*</span>
                 </label>
-                <input
-                  className={styles.fieldInput}
-                  placeholder="e.g. Ronaldo Portugal 2024 — Size M"
+                <textarea
+                  className={styles.fieldTextarea}
+                  placeholder={'e.g. Ronaldo Portugal 2024 — Size M\nMbappe France 2024 — Size S'}
                   value={form.exchange_jersey}
                   onChange={e => setForm(f => ({ ...f, exchange_jersey: e.target.value }))}
+                  rows={3}
                 />
-                <p className={styles.fieldHint}>Replacement jersey to be sent to the customer</p>
+                <p className={styles.fieldHint}>Replacement jersey(s) to be sent — one per line if multiple</p>
               </div>
             )}
 
             {selectedType === 'alternate_product' && (
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel}>
-                  Alternate Jersey Name
+                  Alternate Jersey(s)
                   <span className={styles.fieldRequired}>*</span>
                 </label>
-                <input
-                  className={styles.fieldInput}
-                  placeholder="e.g. Neymar Brazil 2024 — Size M"
+                <textarea
+                  className={styles.fieldTextarea}
+                  placeholder={'e.g. Neymar Brazil 2024 — Size M\nVinicius Brazil 2024 — Size S'}
                   value={form.alternate_jersey}
                   onChange={e => setForm(f => ({ ...f, alternate_jersey: e.target.value }))}
+                  rows={3}
                 />
-                <p className={styles.fieldHint}>Alternate jersey to be sent to the customer</p>
+                <p className={styles.fieldHint}>Alternate jersey(s) to be sent — one per line if multiple</p>
               </div>
             )}
 

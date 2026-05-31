@@ -148,6 +148,30 @@
   color: var(--text-tertiary);
 }
 
+.fieldTextarea {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border-md);
+  border-radius: 7px;
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--surface-2);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.12s;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.fieldTextarea:focus {
+  border-color: var(--accent);
+}
+.fieldTextarea::placeholder {
+  color: var(--text-tertiary);
+}
+
 .fieldHint {
   font-size: 11px;
   color: var(--text-tertiary);
