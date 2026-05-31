@@ -4,7 +4,6 @@ import { fetchTemplates, trackTemplateUse, updateThread, resolveThread, improveT
 import { formatFullTime, resolveTemplate, STATUS_CONFIG, PRIORITY_CONFIG, getBrandColor, statusSince } from '../../utils/helpers.js';
 import TemplateEditor from '../Templates/TemplateEditor.jsx';
 import ActionModal from './ActionModal.jsx';
-import ActionPanel from './ActionPanel.jsx';
 import styles from './ThreadPanel.module.css';
 
 export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
@@ -18,8 +17,6 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
   const [tplSearch, setTplSearch]           = useState('');
   const [showTagInput, setShowTagInput]     = useState(false);
   const [tagInput, setTagInput]             = useState('');
-  const [activeTab, setActiveTab]               = useState('messages'); // 'messages' | 'actions'
-  const [actionCount, setActionCount]           = useState(0);
   const [showActionModal, setShowActionModal]   = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolveForm, setResolveForm]       = useState({ resolved_by: '', resolution_note: '' });
@@ -223,8 +220,6 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
     setShowTemplates(false);
     setAttachments([]);
     setIsExpanded(false);
-    setActiveTab('messages');
-    setActionCount(0);
   }, [threadId]);
 
   // Load templates once
@@ -444,45 +439,13 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className={styles.tabBar}>
-        <button
-          className={`${styles.tab} ${activeTab === 'messages' ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab('messages')}
-        >
-          Messages
-          {messages.length > 0 && (
-            <span className={styles.tabBadge}>{messages.length}</span>
-          )}
-        </button>
-        <button
-          className={`${styles.tab} ${activeTab === 'actions' ? styles.tabActive : ''}`}
-          onClick={() => setActiveTab('actions')}
-        >
-          Actions
-          {actionCount > 0 && (
-            <span className={`${styles.tabBadge} ${styles.tabBadgeAction}`}>{actionCount}</span>
-          )}
-        </button>
-      </div>
-
       {/* Messages */}
-      {activeTab === 'messages' && (
-        <div className={styles.messages}>
-          {messages.map((msg, i) => (
-            <MessageBubble key={msg.id || i} message={msg} thread={thread} />
-          ))}
-          <div ref={messagesEndRef} />
-        </div>
-      )}
-
-      {/* Actions tab */}
-      {activeTab === 'actions' && (
-        <ActionPanel
-          threadId={threadId}
-          onCountChange={setActionCount}
-        />
-      )}
+      <div className={styles.messages}>
+        {messages.map((msg, i) => (
+          <MessageBubble key={msg.id || i} message={msg} thread={thread} />
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
 
       {/* Reply area */}
       <div className={styles.replyArea}>
@@ -793,11 +756,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
         <ActionModal
           threadId={thread.id}
           onClose={() => setShowActionModal(false)}
-          onActionCreated={() => {
-            setActionCount(c => c + 1);
-            setActiveTab('actions');
-            setShowActionModal(false);
-          }}
+          onActionCreated={() => setShowActionModal(false)}
         />
       )}
 

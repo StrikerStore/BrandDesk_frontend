@@ -154,6 +154,20 @@
   margin: 0;
 }
 
+/* Refund notice */
+.refundNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 7px;
+  padding: 10px 12px;
+  line-height: 1.5;
+}
+
 /* Error */
 .error {
   font-size: 12px;

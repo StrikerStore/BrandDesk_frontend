@@ -5,6 +5,7 @@ import Sidebar from '../components/Sidebar/Sidebar.jsx';
 import ThreadPanel from '../components/Thread/ThreadPanel.jsx';
 import CustomerPanel from '../components/Customer/CustomerPanel.jsx';
 import Dashboard from '../components/Dashboard/Dashboard.jsx';
+import ActionsView from '../components/Actions/ActionsView.jsx';
 import NewTicketModal from '../components/NewTicket/NewTicketModal.jsx';
 import styles from './InboxPage.module.css';
 
@@ -22,6 +23,7 @@ export default function InboxPage({ user, onLogout }) {
   const [sidebarW, setSidebarW]                 = useState(SIDEBAR_DEFAULT);
   const [customerW, setCustomerW]               = useState(CUSTOMER_DEFAULT);
   const [showAnalytics, setShowAnalytics]       = useState(false);
+  const [showActionsView, setShowActionsView]   = useState(false);
   const [showNewTicket, setShowNewTicket]       = useState(false);
 
   const draggingRef = useRef(null);
@@ -102,6 +104,7 @@ export default function InboxPage({ user, onLogout }) {
           onFullSync={fullSync}
           onLoadMore={loadMore}
           onAnalytics={() => setShowAnalytics(true)}
+          onActionsView={() => setShowActionsView(true)}
           onNewTicket={() => setShowNewTicket(true)}
           user={user}
           onLogout={onLogout}
@@ -134,6 +137,18 @@ export default function InboxPage({ user, onLogout }) {
         <Dashboard
           onClose={() => setShowAnalytics(false)}
           sidebarWidth={sidebarW}
+        />
+      )}
+
+      {/* Actions consolidated view */}
+      {showActionsView && (
+        <ActionsView
+          onClose={() => setShowActionsView(false)}
+          sidebarWidth={sidebarW}
+          onSelectThread={(threadId) => {
+            setShowActionsView(false);
+            handleSelectThread(threadId);
+          }}
         />
       )}
 

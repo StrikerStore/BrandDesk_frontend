@@ -21,6 +21,12 @@ const ACTION_TYPES = [
     icon: '🔁',
     desc: 'Send an alternate jersey to the customer',
   },
+  {
+    id: 'refund',
+    label: 'Refund',
+    icon: '💰',
+    desc: 'Process a direct refund — no pickup required',
+  },
 ];
 
 export default function ActionModal({ threadId, onClose, onActionCreated }) {
@@ -43,7 +49,9 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
 
   const handleSubmit = async () => {
     setError('');
-    if (!form.pickup_jersey.trim()) { setError('Pickup jersey name is required'); return; }
+    if (selectedType !== 'refund' && !form.pickup_jersey.trim()) {
+      setError('Pickup jersey name is required'); return;
+    }
     if (selectedType === 'exchange' && !form.exchange_jersey.trim()) {
       setError('Exchange jersey name is required'); return;
     }
@@ -112,20 +120,29 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
           <div className={styles.body}>
             <p className={styles.stepHint}>Enter the jersey details for this action.</p>
 
-            <div className={styles.fieldGroup}>
-              <label className={styles.fieldLabel}>
-                Pickup Jersey Name
-                <span className={styles.fieldRequired}>*</span>
-              </label>
-              <input
-                autoFocus
-                className={styles.fieldInput}
-                placeholder="e.g. Messi Argentina 2024 — Size L"
-                value={form.pickup_jersey}
-                onChange={e => setForm(f => ({ ...f, pickup_jersey: e.target.value }))}
-              />
-              <p className={styles.fieldHint}>Jersey to be picked up from the customer</p>
-            </div>
+            {selectedType === 'refund' ? (
+              <div className={styles.refundNotice}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+                  <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+                </svg>
+                No pickup required. Refund details (ID &amp; date) can be added after logging.
+              </div>
+            ) : (
+              <div className={styles.fieldGroup}>
+                <label className={styles.fieldLabel}>
+                  Pickup Jersey Name
+                  <span className={styles.fieldRequired}>*</span>
+                </label>
+                <input
+                  autoFocus
+                  className={styles.fieldInput}
+                  placeholder="e.g. Messi Argentina 2024 — Size L"
+                  value={form.pickup_jersey}
+                  onChange={e => setForm(f => ({ ...f, pickup_jersey: e.target.value }))}
+                />
+                <p className={styles.fieldHint}>Jersey to be picked up from the customer</p>
+              </div>
+            )}
 
             {selectedType === 'exchange' && (
               <div className={styles.fieldGroup}>
