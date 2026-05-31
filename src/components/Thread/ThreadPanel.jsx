@@ -3,6 +3,8 @@ import { useThread } from '../../hooks/useThread.js';
 import { fetchTemplates, trackTemplateUse, updateThread, resolveThread, improveText } from '../../utils/api.js';
 import { formatFullTime, resolveTemplate, STATUS_CONFIG, PRIORITY_CONFIG, getBrandColor, statusSince } from '../../utils/helpers.js';
 import TemplateEditor from '../Templates/TemplateEditor.jsx';
+import ActionModal from './ActionModal.jsx';
+import ActionPanel from './ActionPanel.jsx';
 import styles from './ThreadPanel.module.css';
 
 export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
@@ -16,6 +18,9 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
   const [tplSearch, setTplSearch]           = useState('');
   const [showTagInput, setShowTagInput]     = useState(false);
   const [tagInput, setTagInput]             = useState('');
+  const [activeTab, setActiveTab]               = useState('messages'); // 'messages' | 'actions'
+  const [actionCount, setActionCount]           = useState(0);
+  const [showActionModal, setShowActionModal]   = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolveForm, setResolveForm]       = useState({ resolved_by: '', resolution_note: '' });
   const [resolving, setResolving]           = useState(false);
@@ -218,6 +223,8 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
     setShowTemplates(false);
     setAttachments([]);
     setIsExpanded(false);
+    setActiveTab('messages');
+    setActionCount(0);
   }, [threadId]);
 
   // Load templates once
@@ -437,13 +444,45 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
         </div>
       </div>
 
-      {/* Messages */}
-      <div className={styles.messages}>
-        {messages.map((msg, i) => (
-          <MessageBubble key={msg.id || i} message={msg} thread={thread} />
-        ))}
-        <div ref={messagesEndRef} />
+      {/* Tab bar */}
+      <div className={styles.tabBar}>
+        <button
+          className={`${styles.tab} ${activeTab === 'messages' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('messages')}
+        >
+          Messages
+          {messages.length > 0 && (
+            <span className={styles.tabBadge}>{messages.length}</span>
+          )}
+        </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'actions' ? styles.tabActive : ''}`}
+          onClick={() => setActiveTab('actions')}
+        >
+          Actions
+          {actionCount > 0 && (
+            <span className={`${styles.tabBadge} ${styles.tabBadgeAction}`}>{actionCount}</span>
+          )}
+        </button>
       </div>
+
+      {/* Messages */}
+      {activeTab === 'messages' && (
+        <div className={styles.messages}>
+          {messages.map((msg, i) => (
+            <MessageBubble key={msg.id || i} message={msg} thread={thread} />
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+      )}
+
+      {/* Actions tab */}
+      {activeTab === 'actions' && (
+        <ActionPanel
+          threadId={threadId}
+          onCountChange={setActionCount}
+        />
+      )}
 
       {/* Reply area */}
       <div className={styles.replyArea}>
@@ -519,6 +558,18 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
               <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
             {isNote ? 'Internal note' : 'Add note'}
+          </button>
+          <button
+            className={`${styles.toolBtn} ${styles.toolBtnAction}`}
+            onClick={() => setShowActionModal(true)}
+            title="Log exchange, return, or alternate product action"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+              <rect x="9" y="3" width="6" height="4" rx="1"/>
+              <path d="M12 12v4m-2-2h4"/>
+            </svg>
+            Action
           </button>
           <button
             className={styles.toolBtn}
@@ -736,6 +787,19 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
           </button>
         </div>
       </div>
+
+      {/* Action modal */}
+      {showActionModal && (
+        <ActionModal
+          threadId={thread.id}
+          onClose={() => setShowActionModal(false)}
+          onActionCreated={() => {
+            setActionCount(c => c + 1);
+            setActiveTab('actions');
+            setShowActionModal(false);
+          }}
+        />
+      )}
 
       {/* Resolution modal */}
       {showResolveModal && (

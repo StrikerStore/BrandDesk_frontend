@@ -59,6 +59,12 @@ export const deleteView = (id)     => api.delete(`/api/views/${id}`);
 export const fetchOrder         = (orderId) => api.get(`/api/orders/${encodeURIComponent(orderId)}`);
 export const fetchOrdersByEmail = (email)   => api.get(`/api/orders/customer/${encodeURIComponent(email)}`);
 
+// Thread Actions
+export const fetchThreadActions   = (threadId)             => api.get(`/api/threads/${threadId}/actions`);
+export const createThreadAction   = (threadId, data)       => api.post(`/api/threads/${threadId}/actions`, data);
+export const updateThreadAction   = (threadId, actionId, data) => api.patch(`/api/threads/${threadId}/actions/${actionId}`, data);
+export const closeThreadAction    = (threadId, actionId)   => api.post(`/api/threads/${threadId}/actions/${actionId}/close`);
+
 // AI text improvement (OpenRouter)
 export const improveText = (text, mode) => api.post('/api/ai/improve', { text, mode });
 
