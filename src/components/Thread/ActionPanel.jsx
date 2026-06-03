@@ -6,12 +6,18 @@ const TYPE_LABELS = {
   exchange: '🔄 Exchange',
   return: '↩ Return',
   alternate_product: '🔁 Alternate Product',
+  refund: '💰 Refund',
+  change_size: '📏 Change Size',
+  change_address: '📍 Change Address',
 };
 
 const TYPE_COLORS = {
   exchange: { bg: '#eff6ff', color: '#1d4ed8', border: '#93c5fd' },
   return: { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
   alternate_product: { bg: '#f0fdf4', color: '#15803d', border: '#86efac' },
+  refund: { bg: '#f5f3ff', color: '#6d28d9', border: '#c4b5fd' },
+  change_size: { bg: '#ecfeff', color: '#0e7490', border: '#67e8f9' },
+  change_address: { bg: '#fdf2f8', color: '#be185d', border: '#f9a8d4' },
 };
 
 function formatDateTime(val) {
@@ -130,9 +136,12 @@ function ActionCard({ action, onFieldUpdate, onClose }) {
 
       {/* Jersey details */}
       <div className={styles.jerseyRow}>
-        <JerseyInfo label="Pickup" value={action.pickup_jersey} />
+        {action.pickup_jersey && <JerseyInfo label="Pickup" value={action.pickup_jersey} />}
         {action.exchange_jersey && <JerseyInfo label="Exchange" value={action.exchange_jersey} />}
         {action.alternate_jersey && <JerseyInfo label="Alternate" value={action.alternate_jersey} />}
+        {action.current_jersey && <JerseyInfo label="Current" value={action.current_jersey} />}
+        {action.new_jersey && <JerseyInfo label="New" value={action.new_jersey} />}
+        {action.new_address && <JerseyInfo label="New Address" value={action.new_address} />}
       </div>
 
       {/* Status section */}
@@ -147,6 +156,29 @@ function ActionCard({ action, onFieldUpdate, onClose }) {
         )}
         {action.action_type === 'alternate_product' && (
           <AlternateStatus action={action} onFieldUpdate={onFieldUpdate} disabled={isClosed} />
+        )}
+        {action.action_type === 'refund' && (
+          <RefundStatus action={action} onFieldUpdate={onFieldUpdate} disabled={isClosed} />
+        )}
+        {action.action_type === 'change_size' && (
+          <div className={styles.statusList}>
+            <CheckboxRow
+              label="Size Changed"
+              checked={!!action.size_change_done}
+              onChange={v => onFieldUpdate(action.id, 'size_change_done', v ? 1 : 0)}
+              disabled={isClosed}
+            />
+          </div>
+        )}
+        {action.action_type === 'change_address' && (
+          <div className={styles.statusList}>
+            <CheckboxRow
+              label="Address Updated"
+              checked={!!action.address_change_done}
+              onChange={v => onFieldUpdate(action.id, 'address_change_done', v ? 1 : 0)}
+              disabled={isClosed}
+            />
+          </div>
         )}
       </div>
 
@@ -361,6 +393,98 @@ function AlternateStatus({ action, onFieldUpdate, disabled }) {
         onChange={v => onFieldUpdate(action.id, 'original_order_cancelled', v ? 1 : 0)}
         disabled={disabled}
       />
+    </div>
+  );
+}
+
+// ── Refund status ────────────────────────────────────────────────────────────
+
+function RefundStatus({ action, onFieldUpdate, disabled }) {
+  const [editingRefundId, setEditingRefundId] = useState(false);
+  const [refundIdInput, setRefundIdInput] = useState(action.refund_id || '');
+  const [editingRefundTime, setEditingRefundTime] = useState(false);
+  const [refundTimeInput, setRefundTimeInput] = useState(action.refund_time || '');
+
+  const saveRefundId = () => {
+    onFieldUpdate(action.id, 'refund_id', refundIdInput.trim() || null);
+    setEditingRefundId(false);
+  };
+
+  const saveRefundTime = () => {
+    onFieldUpdate(action.id, 'refund_time', refundTimeInput.trim() || null);
+    setEditingRefundTime(false);
+  };
+
+  return (
+    <div className={styles.statusList}>
+      <CheckboxRow
+        label="Refund Done"
+        checked={!!action.refund_done}
+        onChange={v => onFieldUpdate(action.id, 'refund_done', v ? 1 : 0)}
+        disabled={disabled}
+      />
+
+      {/* Refund ID */}
+      <div className={styles.statusRow}>
+        <div className={styles.statusRowLeft}>
+          <span className={styles.statusLabel}>Refund ID</span>
+          {!editingRefundId && action.refund_id && (
+            <span className={styles.statusValue} style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+              {action.refund_id}
+            </span>
+          )}
+        </div>
+        {!disabled && (
+          editingRefundId ? (
+            <div className={styles.inlineEdit}>
+              <input
+                autoFocus
+                className={styles.inlineInput}
+                placeholder="Refund ID"
+                value={refundIdInput}
+                onChange={e => setRefundIdInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveRefundId(); if (e.key === 'Escape') setEditingRefundId(false); }}
+              />
+              <button className={styles.inlineSave} onClick={saveRefundId}>Save</button>
+              <button className={styles.inlineCancel} onClick={() => setEditingRefundId(false)}>✕</button>
+            </div>
+          ) : (
+            <button className={styles.editBtn} onClick={() => setEditingRefundId(true)}>
+              {action.refund_id ? 'Edit' : '+ Add'}
+            </button>
+          )
+        )}
+      </div>
+
+      {/* Refund date */}
+      <div className={styles.statusRow}>
+        <div className={styles.statusRowLeft}>
+          <span className={styles.statusLabel}>Refund Date</span>
+          {!editingRefundTime && action.refund_time && (
+            <span className={styles.statusValue}>{action.refund_time}</span>
+          )}
+        </div>
+        {!disabled && (
+          editingRefundTime ? (
+            <div className={styles.inlineEdit}>
+              <input
+                autoFocus
+                className={styles.inlineInput}
+                placeholder="e.g. 2 Jun 2025, 3:30 PM"
+                value={refundTimeInput}
+                onChange={e => setRefundTimeInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveRefundTime(); if (e.key === 'Escape') setEditingRefundTime(false); }}
+              />
+              <button className={styles.inlineSave} onClick={saveRefundTime}>Save</button>
+              <button className={styles.inlineCancel} onClick={() => setEditingRefundTime(false)}>✕</button>
+            </div>
+          ) : (
+            <button className={styles.editBtn} onClick={() => setEditingRefundTime(true)}>
+              {action.refund_time ? 'Edit' : '+ Add'}
+            </button>
+          )
+        )}
+      </div>
     </div>
   );
 }

@@ -283,6 +283,37 @@
   line-height: 1.3;
 }
 
+/* Jersey inline edit */
+.jerseyEdit {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.jerseyTextarea {
+  flex: 1;
+  min-width: 120px;
+  font-size: 12px;
+  font-family: inherit;
+  padding: 4px 7px;
+  border: 1px solid var(--border-md);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text-primary);
+  outline: none;
+  resize: vertical;
+  line-height: 1.3;
+}
+.jerseyTextarea:focus { border-color: var(--accent); }
+
+.jerseyEditBtns {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* Checklist cell */
 .checklistCell { min-width: 150px; }
 

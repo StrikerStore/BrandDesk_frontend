@@ -8,6 +8,8 @@ const TYPE_LABELS = {
   return:            '↩ Return',
   alternate_product: '🔁 Alternate Product',
   refund:            '💰 Refund',
+  change_size:       '📏 Change Size',
+  change_address:    '📍 Change Address',
 };
 
 const TYPE_COLORS = {
@@ -15,6 +17,8 @@ const TYPE_COLORS = {
   return:            { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
   alternate_product: { bg: '#f0fdf4', color: '#15803d', border: '#86efac' },
   refund:            { bg: '#f5f3ff', color: '#6d28d9', border: '#c4b5fd' },
+  change_size:       { bg: '#ecfeff', color: '#0e7490', border: '#67e8f9' },
+  change_address:    { bg: '#fdf2f8', color: '#be185d', border: '#f9a8d4' },
 };
 
 const STATUS_FILTER_OPTIONS = [
@@ -29,6 +33,8 @@ const TYPE_FILTER_OPTIONS = [
   { value: 'return',            label: 'Return' },
   { value: 'alternate_product', label: 'Alternate Product' },
   { value: 'refund',            label: 'Refund' },
+  { value: 'change_size',       label: 'Change Size' },
+  { value: 'change_address',    label: 'Change Address' },
 ];
 
 function formatDate(val) {
@@ -230,25 +236,32 @@ function ActionRow({ action, onFieldUpdate, onClose, onSelectThread }) {
 
       {/* Jerseys */}
       <td className={styles.jerseyCell}>
-        {action.action_type === 'refund' ? (
+        {['exchange', 'return', 'alternate_product'].includes(action.action_type) && (
+          <EditableJersey label="Pickup" value={action.pickup_jersey} disabled={isClosed}
+            onSave={v => onFieldUpdate(action.id, 'pickup_jersey', v)} />
+        )}
+        {action.action_type === 'exchange' && (
+          <EditableJersey label="Exchange" value={action.exchange_jersey} disabled={isClosed}
+            onSave={v => onFieldUpdate(action.id, 'exchange_jersey', v)} />
+        )}
+        {action.action_type === 'alternate_product' && (
+          <EditableJersey label="Alternate" value={action.alternate_jersey} disabled={isClosed}
+            onSave={v => onFieldUpdate(action.id, 'alternate_jersey', v)} />
+        )}
+        {action.action_type === 'change_size' && (
+          <>
+            <EditableJersey label="Current" value={action.current_jersey} disabled={isClosed}
+              onSave={v => onFieldUpdate(action.id, 'current_jersey', v)} />
+            <EditableJersey label="New" value={action.new_jersey} disabled={isClosed}
+              onSave={v => onFieldUpdate(action.id, 'new_jersey', v)} />
+          </>
+        )}
+        {action.action_type === 'change_address' && (
+          <EditableJersey label="Address" value={action.new_address} disabled={isClosed}
+            onSave={v => onFieldUpdate(action.id, 'new_address', v)} />
+        )}
+        {action.action_type === 'refund' && (
           <span className={styles.noIds}>—</span>
-        ) : (
-        <div className={styles.jerseyItem}>
-          <span className={styles.jerseyLabel}>Pickup</span>
-          <span className={styles.jerseyValue}>{action.pickup_jersey}</span>
-        </div>
-        )}
-        {action.exchange_jersey && (
-          <div className={styles.jerseyItem}>
-            <span className={styles.jerseyLabel}>Exchange</span>
-            <span className={styles.jerseyValue}>{action.exchange_jersey}</span>
-          </div>
-        )}
-        {action.alternate_jersey && (
-          <div className={styles.jerseyItem}>
-            <span className={styles.jerseyLabel}>Alternate</span>
-            <span className={styles.jerseyValue}>{action.alternate_jersey}</span>
-          </div>
         )}
       </td>
 
@@ -284,6 +297,14 @@ function ActionRow({ action, onFieldUpdate, onClose, onSelectThread }) {
           <CheckItem label="Refund done" checked={!!action.refund_done} disabled={isClosed}
             onChange={v => onFieldUpdate(action.id, 'refund_done', v ? 1 : 0)} />
         )}
+        {action.action_type === 'change_size' && (
+          <CheckItem label="Size changed" checked={!!action.size_change_done} disabled={isClosed}
+            onChange={v => onFieldUpdate(action.id, 'size_change_done', v ? 1 : 0)} />
+        )}
+        {action.action_type === 'change_address' && (
+          <CheckItem label="Address updated" checked={!!action.address_change_done} disabled={isClosed}
+            onChange={v => onFieldUpdate(action.id, 'address_change_done', v ? 1 : 0)} />
+        )}
       </td>
 
       {/* IDs / notes */}
@@ -314,7 +335,7 @@ function ActionRow({ action, onFieldUpdate, onClose, onSelectThread }) {
             />
           </>
         )}
-        {action.action_type === 'alternate_product' && (
+        {['alternate_product', 'change_size', 'change_address'].includes(action.action_type) && (
           <span className={styles.noIds}>—</span>
         )}
         {action.action_type === 'refund' && (
@@ -375,6 +396,53 @@ function CheckItem({ label, checked, onChange, disabled }) {
         disabled={disabled} style={{ display: 'none' }} />
       <span className={`${styles.checkLabel} ${checked ? styles.checkLabelDone : ''}`}>{label}</span>
     </label>
+  );
+}
+
+// ── Inline editable jersey / address (multiline) ─────────────────────────────
+
+function EditableJersey({ label, value, onSave, disabled }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft]     = useState(value || '');
+
+  const commit = () => { onSave(draft.trim() || null); setEditing(false); };
+
+  if (editing) {
+    return (
+      <div className={styles.jerseyEdit}>
+        <span className={styles.jerseyLabel}>{label}</span>
+        <textarea
+          autoFocus
+          className={styles.jerseyTextarea}
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) commit();
+            if (e.key === 'Escape') setEditing(false);
+          }}
+          rows={2}
+          placeholder={label}
+        />
+        <div className={styles.jerseyEditBtns}>
+          <button className={styles.inlineSave} onClick={commit}>Save</button>
+          <button className={styles.inlineCancel} onClick={() => setEditing(false)}>✕</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.jerseyItem}>
+      <span className={styles.jerseyLabel}>{label}</span>
+      {value
+        ? <span className={styles.jerseyValue} style={{ whiteSpace: 'pre-line' }}>{value}</span>
+        : <span className={styles.noIds}>—</span>}
+      {!disabled && (
+        <button className={styles.editFieldBtn} onClick={() => { setDraft(value || ''); setEditing(true); }}>
+          {value ? 'Edit' : '+ Add'}
+        </button>
+      )}
+    </div>
   );
 }
 

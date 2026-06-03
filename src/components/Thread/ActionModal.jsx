@@ -27,12 +27,27 @@ const ACTION_TYPES = [
     icon: '💰',
     desc: 'Process a direct refund — no pickup required',
   },
+  {
+    id: 'change_size',
+    label: 'Change Size',
+    icon: '📏',
+    desc: 'Swap the customer’s jersey for a different size',
+  },
+  {
+    id: 'change_address',
+    label: 'Change Address',
+    icon: '📍',
+    desc: 'Update the delivery address for the order',
+  },
 ];
 
 export default function ActionModal({ threadId, onClose, onActionCreated }) {
   const [step, setStep] = useState(1); // 1 = choose type, 2 = fill details
   const [selectedType, setSelectedType] = useState(null);
-  const [form, setForm] = useState({ pickup_jersey: '', exchange_jersey: '', alternate_jersey: '' });
+  const [form, setForm] = useState({
+    pickup_jersey: '', exchange_jersey: '', alternate_jersey: '',
+    current_jersey: '', new_jersey: '', new_address: '',
+  });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -49,7 +64,8 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
 
   const handleSubmit = async () => {
     setError('');
-    if (selectedType !== 'refund' && !form.pickup_jersey.trim()) {
+    const pickupTypes = ['exchange', 'return', 'alternate_product'];
+    if (pickupTypes.includes(selectedType) && !form.pickup_jersey.trim()) {
       setError('Pickup jersey name is required'); return;
     }
     if (selectedType === 'exchange' && !form.exchange_jersey.trim()) {
@@ -58,14 +74,26 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
     if (selectedType === 'alternate_product' && !form.alternate_jersey.trim()) {
       setError('Alternate jersey name is required'); return;
     }
+    if (selectedType === 'change_size' && !form.current_jersey.trim()) {
+      setError('Current jersey name is required'); return;
+    }
+    if (selectedType === 'change_size' && !form.new_jersey.trim()) {
+      setError('New jersey name is required'); return;
+    }
+    if (selectedType === 'change_address' && !form.new_address.trim()) {
+      setError('New address is required'); return;
+    }
 
     setSaving(true);
     try {
       const { data } = await createThreadAction(threadId, {
         action_type: selectedType,
-        pickup_jersey: form.pickup_jersey,
+        pickup_jersey: form.pickup_jersey || undefined,
         exchange_jersey: form.exchange_jersey || undefined,
         alternate_jersey: form.alternate_jersey || undefined,
+        current_jersey: form.current_jersey || undefined,
+        new_jersey: form.new_jersey || undefined,
+        new_address: form.new_address || undefined,
       });
       onActionCreated(data.action);
     } catch (err) {
@@ -118,16 +146,18 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
         {/* Step 2 — Fill details */}
         {step === 2 && (
           <div className={styles.body}>
-            <p className={styles.stepHint}>Enter the jersey details for this action.</p>
+            <p className={styles.stepHint}>Enter the details for this action.</p>
 
-            {selectedType === 'refund' ? (
+            {selectedType === 'refund' && (
               <div className={styles.refundNotice}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
                   <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
                 </svg>
                 No pickup required. Refund details (ID &amp; date) can be added after logging.
               </div>
-            ) : (
+            )}
+
+            {['exchange', 'return', 'alternate_product'].includes(selectedType) && (
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel}>
                   Pickup Jersey(s)
@@ -176,6 +206,58 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
                   rows={3}
                 />
                 <p className={styles.fieldHint}>Alternate jersey(s) to be sent — one per line if multiple</p>
+              </div>
+            )}
+
+            {selectedType === 'change_size' && (
+              <>
+                <div className={styles.fieldGroup}>
+                  <label className={styles.fieldLabel}>
+                    Current Jersey
+                    <span className={styles.fieldRequired}>*</span>
+                  </label>
+                  <textarea
+                    autoFocus
+                    className={styles.fieldTextarea}
+                    placeholder={'e.g. Messi Argentina 2024 — Size L'}
+                    value={form.current_jersey}
+                    onChange={e => setForm(f => ({ ...f, current_jersey: e.target.value }))}
+                    rows={2}
+                  />
+                  <p className={styles.fieldHint}>Jersey the customer currently has</p>
+                </div>
+                <div className={styles.fieldGroup}>
+                  <label className={styles.fieldLabel}>
+                    New Jersey
+                    <span className={styles.fieldRequired}>*</span>
+                  </label>
+                  <textarea
+                    className={styles.fieldTextarea}
+                    placeholder={'e.g. Messi Argentina 2024 — Size M'}
+                    value={form.new_jersey}
+                    onChange={e => setForm(f => ({ ...f, new_jersey: e.target.value }))}
+                    rows={2}
+                  />
+                  <p className={styles.fieldHint}>Jersey with the new size to be sent</p>
+                </div>
+              </>
+            )}
+
+            {selectedType === 'change_address' && (
+              <div className={styles.fieldGroup}>
+                <label className={styles.fieldLabel}>
+                  New Address
+                  <span className={styles.fieldRequired}>*</span>
+                </label>
+                <textarea
+                  autoFocus
+                  className={styles.fieldTextarea}
+                  placeholder={'e.g. 12 MG Road, Indiranagar, Bengaluru, KA 560038'}
+                  value={form.new_address}
+                  onChange={e => setForm(f => ({ ...f, new_address: e.target.value }))}
+                  rows={3}
+                />
+                <p className={styles.fieldHint}>Updated delivery address for the order</p>
               </div>
             )}
 
