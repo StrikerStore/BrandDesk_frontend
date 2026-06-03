@@ -136,7 +136,7 @@ function ActionCard({ action, onFieldUpdate, onClose }) {
 
       {/* Jersey details */}
       <div className={styles.jerseyRow}>
-        {action.pickup_jersey && <JerseyInfo label="Pickup" value={action.pickup_jersey} />}
+        {action.pickup_jersey && <JerseyInfo label={action.action_type === 'refund' ? 'Jersey' : 'Pickup'} value={action.pickup_jersey} />}
         {action.exchange_jersey && <JerseyInfo label="Exchange" value={action.exchange_jersey} />}
         {action.alternate_jersey && <JerseyInfo label="Alternate" value={action.alternate_jersey} />}
         {action.current_jersey && <JerseyInfo label="Current" value={action.current_jersey} />}

@@ -64,9 +64,10 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
 
   const handleSubmit = async () => {
     setError('');
-    const pickupTypes = ['exchange', 'return', 'alternate_product'];
+    const pickupTypes = ['exchange', 'return', 'alternate_product', 'refund'];
     if (pickupTypes.includes(selectedType) && !form.pickup_jersey.trim()) {
-      setError('Pickup jersey name is required'); return;
+      setError(selectedType === 'refund' ? 'Refund jersey name is required' : 'Pickup jersey name is required');
+      return;
     }
     if (selectedType === 'exchange' && !form.exchange_jersey.trim()) {
       setError('Exchange jersey name is required'); return;
@@ -157,10 +158,10 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
               </div>
             )}
 
-            {['exchange', 'return', 'alternate_product'].includes(selectedType) && (
+            {['exchange', 'return', 'alternate_product', 'refund'].includes(selectedType) && (
               <div className={styles.fieldGroup}>
                 <label className={styles.fieldLabel}>
-                  Pickup Jersey(s)
+                  {selectedType === 'refund' ? 'Refund Jersey(s)' : 'Pickup Jersey(s)'}
                   <span className={styles.fieldRequired}>*</span>
                 </label>
                 <textarea
@@ -171,7 +172,11 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
                   onChange={e => setForm(f => ({ ...f, pickup_jersey: e.target.value }))}
                   rows={3}
                 />
-                <p className={styles.fieldHint}>Jersey(s) to be picked up — one per line if multiple</p>
+                <p className={styles.fieldHint}>
+                  {selectedType === 'refund'
+                    ? 'Jersey(s) the refund is for — one per line if multiple'
+                    : 'Jersey(s) to be picked up — one per line if multiple'}
+                </p>
               </div>
             )}
 

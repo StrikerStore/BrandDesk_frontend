@@ -261,7 +261,8 @@ function ActionRow({ action, onFieldUpdate, onClose, onSelectThread }) {
             onSave={v => onFieldUpdate(action.id, 'new_address', v)} />
         )}
         {action.action_type === 'refund' && (
-          <span className={styles.noIds}>—</span>
+          <EditableJersey label="Jersey" value={action.pickup_jersey} disabled={isClosed}
+            onSave={v => onFieldUpdate(action.id, 'pickup_jersey', v)} />
         )}
       </td>
 
