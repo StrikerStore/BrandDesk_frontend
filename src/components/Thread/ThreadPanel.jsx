@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useThread } from '../../hooks/useThread.js';
-import { fetchTemplates, trackTemplateUse, updateThread, resolveThread, improveText } from '../../utils/api.js';
+import { fetchTemplates, trackTemplateUse, updateThread, resolveThread, improveText, fetchThreadActions } from '../../utils/api.js';
 import { formatFullTime, resolveTemplate, STATUS_CONFIG, PRIORITY_CONFIG, getBrandColor, statusSince } from '../../utils/helpers.js';
 import TemplateEditor from '../Templates/TemplateEditor.jsx';
 import ActionModal from './ActionModal.jsx';
+import ActionPanel from './ActionPanel.jsx';
 import styles from './ThreadPanel.module.css';
 
 export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
@@ -18,6 +19,8 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
   const [showTagInput, setShowTagInput]     = useState(false);
   const [tagInput, setTagInput]             = useState('');
   const [showActionModal, setShowActionModal]   = useState(false);
+  const [actionSummary, setActionSummary]       = useState({ total: 0, open: 0 });
+  const [showActions, setShowActions]           = useState(false);
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolveForm, setResolveForm]       = useState({ resolved_by: '', resolution_note: '' });
   const [resolving, setResolving]           = useState(false);
@@ -30,6 +33,27 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [linkUrl, setLinkUrl]               = useState('');
   const savedRangeRef                       = useRef(null); // saved selection for link insert
+
+  // Keep the header badge in sync with actions logged on this thread
+  const applyActionList = (list) => {
+    setActionSummary({ total: list.length, open: list.filter(a => !a.is_closed).length });
+  };
+
+  const loadActionSummary = useCallback(async () => {
+    if (!threadId) return;
+    try {
+      const { data } = await fetchThreadActions(threadId);
+      const list = data.actions || [];
+      setActionSummary({ total: list.length, open: list.filter(a => !a.is_closed).length });
+    } catch {
+      setActionSummary({ total: 0, open: 0 });
+    }
+  }, [threadId]);
+
+  useEffect(() => {
+    setShowActions(false);
+    loadActionSummary();
+  }, [loadActionSummary]);
 
   // Pre-fill resolver name from last used
   const openResolveModal = () => {
@@ -411,6 +435,28 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
           )}
           <span className={styles.metaSep}>·</span>
           <span className={styles.metaTime}>{formatFullTime(thread.created_at)}</span>
+          {actionSummary.total > 0 && (
+            <>
+              <span className={styles.metaSep}>·</span>
+              <button
+                className={`${styles.actionBadge} ${actionSummary.open > 0 ? styles.actionBadgeOpen : ''} ${showActions ? styles.actionBadgeActive : ''}`}
+                onClick={() => setShowActions(v => !v)}
+                title={showActions ? 'Hide actions' : 'View actions logged for this ticket'}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+                  <rect x="9" y="3" width="6" height="4" rx="1"/>
+                  <path d="M9 12h6M9 16h4"/>
+                </svg>
+                {actionSummary.total} action{actionSummary.total > 1 ? 's' : ''}
+                {actionSummary.open > 0 ? ` · ${actionSummary.open} open` : ' · closed'}
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  style={{ transform: showActions ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </button>
+            </>
+          )}
         </div>
 
         {/* Tags row */}
@@ -438,6 +484,13 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
           )}
         </div>
       </div>
+
+      {/* Actions logged on this thread — expanded from header badge */}
+      {showActions && (
+        <div className={styles.actionsSection}>
+          <ActionPanel threadId={thread.id} onActionsChange={applyActionList} />
+        </div>
+      )}
 
       {/* Messages */}
       <div className={styles.messages}>
@@ -756,7 +809,11 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
         <ActionModal
           threadId={thread.id}
           onClose={() => setShowActionModal(false)}
-          onActionCreated={() => setShowActionModal(false)}
+          onActionCreated={() => {
+            setShowActionModal(false);
+            loadActionSummary();
+            setShowActions(true);
+          }}
         />
       )}
 

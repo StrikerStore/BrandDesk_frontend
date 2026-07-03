@@ -28,7 +28,7 @@ function formatDateTime(val) {
   });
 }
 
-export default function ActionPanel({ threadId, onCountChange }) {
+export default function ActionPanel({ threadId, onCountChange, onActionsChange }) {
   const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,6 +40,7 @@ export default function ActionPanel({ threadId, onCountChange }) {
       const list = data.actions || [];
       setActions(list);
       onCountChange?.(list.length);
+      onActionsChange?.(list);
     } catch (err) {
       console.error('Fetch actions error:', err.message);
     } finally {
@@ -63,7 +64,11 @@ export default function ActionPanel({ threadId, onCountChange }) {
     if (!window.confirm('Close this action? This cannot be undone.')) return;
     try {
       const { data } = await closeThreadAction(threadId, actionId);
-      setActions(prev => prev.map(a => a.id === actionId ? data.action : a));
+      setActions(prev => {
+        const next = prev.map(a => a.id === actionId ? data.action : a);
+        onActionsChange?.(next);
+        return next;
+      });
     } catch (err) {
       console.error('Close action error:', err.message);
     }
