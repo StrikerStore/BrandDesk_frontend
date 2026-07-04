@@ -659,6 +659,11 @@
 }
 .userMenuItemDanger:hover { background: #fef2f2; }
 
+/* Wrapper around search + saved views + brand pills.
+   Desktop: display:contents — zero layout effect.
+   Mobile: becomes a shared flex row (saved views hidden). */
+.searchFilterRow { display: contents; }
+
 /* ============================================================
    MOBILE — Neubrutalism inbox (home screen) (<= 768px)
    ============================================================ */
@@ -707,18 +712,36 @@
   .unreadBadge { background: var(--nb-sky); color: var(--nb-ink); }
   .urgentBadge { background: var(--nb-coral); color: var(--nb-ink); }
 
-  /* Search */
-  .searchWrap {
+  /* Shared row: [search][brand pills] — tapped side expands */
+  .searchFilterRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin: 8px 14px 0;
+  }
+
+  /* Saved views removed on mobile */
+  .savedViews { display: none; }
+
+  /* Search — compact by default, ~90% when focused or holding a query */
+  .searchWrap {
+    margin: 0;
     padding: 0 12px;
     height: 42px;
+    flex: 0 1 44%;
+    min-width: 52px;
+    overflow: hidden;
+    transition: flex-basis 0.22s ease, flex-grow 0.22s ease;
     border: 2px solid var(--nb-ink);
     border-radius: 13px;
     background: var(--surface);
     box-shadow: var(--nb-shadow-sm);
   }
-  .searchInput { font-size: 16px; }
-  .searchBtn {
+  .searchExpanded .searchWrap { flex: 1 1 90%; }
+  .searchInput { font-size: 16px; min-width: 0; }
+  .searchBtn { display: none; } /* Enter commits; button only when expanded */
+  .searchExpanded .searchBtn {
+    display: block;
     border: 2px solid var(--nb-ink);
     border-radius: 10px;
     font-weight: 800;
@@ -726,36 +749,17 @@
     background: var(--nb-yellow);
     color: var(--nb-ink);
   }
-  .searchBtnActive { background: var(--nb-lav); color: var(--nb-ink); border-color: var(--nb-ink); }
+  .searchExpanded .searchBtnActive { background: var(--nb-lav); color: var(--nb-ink); border-color: var(--nb-ink); }
 
-  /* Saved views — horizontal scroll */
-  .savedViews { border-bottom: none; padding: 8px 14px 0; }
-  .savedViewsRow {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 2px;
+  /* Brand pills — take the remaining width, shrink to a sliver while searching */
+  .filterSection {
+    padding: 0;
+    flex: 1 1 56%;
+    min-width: 44px;
+    overflow: hidden;
+    transition: flex-basis 0.22s ease, flex-grow 0.22s ease;
   }
-  .savedViewsRow::-webkit-scrollbar { display: none; }
-  .viewPill {
-    flex-shrink: 0;
-    height: 32px;
-    border: 2px solid var(--nb-ink);
-    font-weight: 700;
-  }
-  .viewPillActive { background: var(--nb-lav); color: var(--nb-ink); box-shadow: var(--nb-shadow-sm); }
-  .viewPillDelete { color: var(--nb-ink); font-size: 11px; }
-  .addViewBtn {
-    flex-shrink: 0;
-    height: 32px;
-    border: 2px dashed var(--nb-ink);
-    color: var(--nb-ink);
-    font-weight: 700;
-  }
-
-  /* Brand pills — horizontal scroll */
-  .filterSection { padding: 8px 14px 0; }
+  .searchExpanded .filterSection { flex: 0 1 10%; }
   .pills {
     flex-wrap: nowrap;
     overflow-x: auto;

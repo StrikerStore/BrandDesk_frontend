@@ -20,6 +20,7 @@ export default function Sidebar({
   const [showSaveView, setShowSaveView]   = useState(false);
   const [viewName, setViewName]           = useState('');
   const [savingView, setSavingView]       = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false); // mobile: search vs brand-filter width toggle
   const searchRef = useRef(null);
   const listRef   = useRef(null);
 
@@ -251,8 +252,13 @@ export default function Sidebar({
         </div>
       </div>
 
+      {/* Search + saved views + brand filters.
+          Desktop: wrapper is display:contents (layout identical).
+          Mobile: wrapper is a flex row — search and brand pills share it,
+          whichever is tapped expands; saved views are hidden. */}
+      <div className={`${styles.searchFilterRow} ${searchFocused || searchVal ? styles.searchExpanded : ''}`}>
       {/* Search */}
-      <div className={styles.searchWrap}>
+      <div className={styles.searchWrap} onClick={() => searchRef.current?.focus()}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={styles.searchIcon}>
           <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
         </svg>
@@ -263,6 +269,8 @@ export default function Sidebar({
           value={searchVal}
           onChange={e => handleSearchChange(e.target.value)}
           onKeyDown={handleSearchKey}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
         />
         {searchVal && (
           <button className={styles.searchClear} onClick={clearSearch} title="Clear search">✕</button>
@@ -343,6 +351,7 @@ export default function Sidebar({
           })}
         </div>
       </div>
+      </div>{/* /searchFilterRow */}
 
       {/* Status tabs */}
       <div className={styles.statusTabs}>

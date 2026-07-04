@@ -756,21 +756,38 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
               : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 10l6 6 6-6"/></svg>
             }
           </button>
-          {/* Mobile-only inline send — desktop keeps the button in replyBottom */}
-          <button
-            className={`${styles.mobileSend} ${isNote ? styles.mobileSendNote : ''}`}
-            onClick={handleSend}
-            disabled={!replyText.trim() || sending}
-            aria-label={isNote ? 'Save note' : 'Send reply'}
-            type="button"
-          >
-            {sending
-              ? <span className={styles.mobileSendDots}>…</span>
-              : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
-                </svg>
-            }
-          </button>
+          {/* Mobile-only send column: [✨ make professional / ↩ undo] above [➤ send] */}
+          <div className={styles.mobileSendCol}>
+            {!isNote && (replyText.trim().length >= 10 || aiOriginal) && (
+              <button
+                className={`${styles.mobileAiBtn} ${aiLoading === 'professional' ? styles.aiBtnLoading : ''}`}
+                onClick={() => {
+                  if (aiOriginal) { setEditorContent(aiOriginal); setAiOriginal(null); }
+                  else handleAiImprove('professional');
+                }}
+                disabled={!!aiLoading || sending}
+                aria-label={aiOriginal ? 'Undo AI rewrite' : 'Make professional'}
+                title={aiOriginal ? 'Undo AI rewrite' : 'Rewrite as professional reply'}
+                type="button"
+              >
+                {aiLoading === 'professional' ? '…' : aiOriginal ? '↩' : '✨'}
+              </button>
+            )}
+            <button
+              className={`${styles.mobileSend} ${isNote ? styles.mobileSendNote : ''}`}
+              onClick={handleSend}
+              disabled={!replyText.trim() || sending}
+              aria-label={isNote ? 'Save note' : 'Send reply'}
+              type="button"
+            >
+              {sending
+                ? <span className={styles.mobileSendDots}>…</span>
+                : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
+                  </svg>
+              }
+            </button>
+          </div>
         </div>
 
         {/* Attachment list */}

@@ -1164,6 +1164,7 @@
 /* Mobile-only compose controls — hidden on desktop */
 .composeToggle { display: none; }
 .mobileSend { display: none; }
+.mobileSendCol { display: none; }
 
 /* Mobile-only WhatsApp elements — hidden on desktop */
 .dateSep { display: none; }
@@ -1457,7 +1458,15 @@
   .textareaNote { background: var(--nb-yellow-soft); border-color: var(--nb-ink); color: var(--nb-ink); }
   .expandBtn { display: none; }
 
-  /* Inline send button (WhatsApp style) — replaces the full-width send row */
+  /* Send column: [✨ AI] stacked above [➤ send], WhatsApp style */
+  .mobileSendCol {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+  }
   .mobileSend {
     display: flex;
     align-items: center;
@@ -1476,18 +1485,28 @@
   .mobileSendNote { background: var(--nb-yellow); }
   .mobileSendDots { font-size: 18px; font-weight: 800; line-height: 1; }
 
-  /* Bottom row — only AI helper chips remain; send + hint live in the editor row */
-  .replyBottom { margin-top: 0; }
-  .replyBottom .sendBtn { display: none; }
-  .hint { display: none; }
-  .replyBottom > div {
-    width: 100%;
-    overflow-x: auto;
-    flex-wrap: nowrap !important;
-    scrollbar-width: none;
+  .mobileAiBtn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    border: 2px solid var(--nb-ink);
+    border-radius: 50%;
+    background: var(--nb-lav);
+    color: var(--nb-ink);
+    font-size: 15px;
+    line-height: 1;
+    box-shadow: var(--nb-shadow-sm);
   }
-  .replyBottom > div::-webkit-scrollbar { display: none; }
-  .aiBtn, .grammarBtn, .aiUndoBtn { flex-shrink: 0; border: 2px solid var(--nb-ink); font-weight: 700; min-height: 36px; margin-top: 6px; }
+  .mobileAiBtn:active:not(:disabled) { transform: translate(1px, 1px); box-shadow: none; }
+  .mobileAiBtn:disabled { opacity: 0.5; }
+
+  /* Bottom row (grammar / AI chips / hint / desktop send) removed on mobile —
+     the ✨ button next to send covers "Make professional" */
+  .replyBottom { display: none; }
 
   /* Template picker — bottom sheet */
   .tplPicker {
