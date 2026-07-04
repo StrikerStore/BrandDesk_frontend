@@ -1161,8 +1161,13 @@
 }
 .aiUndoBtn:hover { color: var(--text-primary); border-color: var(--border-strong); }
 
-/* Mobile-only compose toggle — hidden on desktop */
+/* Mobile-only compose controls — hidden on desktop */
 .composeToggle { display: none; }
+.mobileSend { display: none; }
+
+/* Mobile-only WhatsApp elements — hidden on desktop */
+.dateSep { display: none; }
+.bubbleTimeIn { display: none; }
 
 /* ============================================================
    MOBILE — Neubrutalism thread view (<= 768px)
@@ -1175,62 +1180,110 @@
     border-right: none;
   }
 
-  /* Header */
+  /* Header — WhatsApp-style single row, expandable details strip */
   .header {
     position: sticky;
     top: 0;
     z-index: 30;
-    padding: calc(10px + env(safe-area-inset-top)) 14px 12px;
+    padding: calc(6px + env(safe-area-inset-top)) 12px 8px;
     border-bottom: 3px solid var(--nb-ink);
     background: var(--surface);
   }
   .headerTop {
     flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 8px;
+    margin-bottom: 6px;
   }
-  /* Keep back + name/email on row 1; push the priority/status controls to their own row */
+  /* Row 1 = back · avatar · name/subtitle · icons; controls strip wraps to its own row when expanded */
   .headerCustomer { flex-basis: 0; }
-  .headerTop > div:last-child { flex-basis: 100%; justify-content: flex-start; }
+  .headerControls { flex-basis: 100%; justify-content: flex-start; }
+
+  /* Collapsed (default): only the WhatsApp row shows */
+  .headerCollapsed .headerControls,
+  .headerCollapsed .headerMeta,
+  .headerCollapsed .tagsRow { display: none !important; }
+  .headerCollapsed .headerTop { margin-bottom: 0; }
+
   .backBtn {
     flex-shrink: 0;
-    width: 42px;
-    height: 42px;
+    width: 38px;
+    height: 38px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: 2px solid var(--nb-ink);
-    border-radius: 12px;
+    border-radius: 11px;
     background: var(--nb-yellow);
     color: var(--nb-ink);
     box-shadow: var(--nb-shadow-sm);
   }
   .backBtn:active { transform: translate(1px, 1px); box-shadow: none; }
-  .headerName { font-size: 17px; font-weight: 800; }
-  .headerEmail { font-size: 12px; }
+  .headerAvatar {
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 2px solid var(--nb-ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+  }
+  .headerName { font-size: 16px; font-weight: 800; }
+  .headerEmail { display: none; } /* email lives in the customer sheet */
+  .statusSince { font-size: 11px; font-weight: 700; padding: 1px 8px; border: 1.5px solid rgba(26, 26, 26, 0.25); }
   .customerBtn {
     flex-shrink: 0;
-    width: 42px;
-    height: 42px;
+    width: 38px;
+    height: 38px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: 2px solid var(--nb-ink);
-    border-radius: 12px;
+    border-radius: 11px;
     background: var(--nb-lav);
     color: var(--nb-ink);
     box-shadow: var(--nb-shadow-sm);
   }
   .customerBtn:active { transform: translate(1px, 1px); box-shadow: none; }
+  .detailsToggle {
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--nb-ink);
+    border-radius: 11px;
+    background: var(--surface-2);
+    color: var(--nb-ink);
+    box-shadow: var(--nb-shadow-sm);
+  }
+  .detailsToggle svg { transition: transform 0.15s ease; }
+  .detailsToggleOpen { background: var(--nb-peach); }
+  .detailsToggleOpen svg { transform: rotate(180deg); }
+  .detailsToggle:active { transform: translate(1px, 1px); box-shadow: none; }
+  .detailsToggle { position: relative; }
+  .toggleDot {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--nb-coral);
+    border: 1.5px solid var(--nb-ink);
+  }
 
   .prioritySelect, .statusSelect {
-    min-height: 40px;
+    min-height: 34px;
     border: 2px solid var(--nb-ink) !important;
-    border-radius: 12px;
-    font-size: 13px;
+    border-radius: 10px;
+    font-size: 12.5px;
     font-weight: 700;
-    padding: 4px 12px;
+    padding: 2px 10px;
     box-shadow: var(--nb-shadow-sm);
   }
 
@@ -1243,6 +1296,7 @@
   }
   .headerMeta::-webkit-scrollbar, .tagsRow::-webkit-scrollbar { display: none; }
   .headerMeta > *, .tagsRow > * { flex-shrink: 0; }
+  .tagsRow { margin-top: 4px; min-height: 0; }
   .brandBadge, .ticketIdBadge { border: 1.5px solid var(--nb-ink); font-weight: 700; }
   .actionBadge { border: 2px solid var(--nb-ink); font-weight: 700; }
   .tagChip { border: 1.5px solid var(--nb-ink); }
@@ -1250,14 +1304,49 @@
 
   .actionsSection { max-height: 40vh; border-bottom: 3px solid var(--nb-ink); }
 
-  /* Messages */
+  /* Messages — WhatsApp-style chat area with subtle wallpaper */
   .messages {
     padding: 16px 14px;
     gap: 14px;
     overscroll-behavior: contain;
-    background: var(--bg);
+    background:
+      radial-gradient(circle at 1px 1px, rgba(26, 26, 26, 0.05) 1px, transparent 0) 0 0 / 20px 20px,
+      var(--bg);
   }
   .msgWrap { max-width: 88%; }
+  /* Consecutive messages from the same side sit closer together */
+  .msgGrouped { margin-top: -9px; }
+
+  /* Date separators: Today / Yesterday / 4 Jul 2026 */
+  .dateSep {
+    display: flex;
+    justify-content: center;
+    margin: 2px 0;
+  }
+  .dateSepChip {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 99px;
+    border: 1.5px solid rgba(26, 26, 26, 0.35);
+    background: var(--surface);
+    color: rgba(26, 26, 26, 0.65);
+    box-shadow: 1px 1px 0 rgba(26, 26, 26, 0.35);
+  }
+
+  /* Timestamp lives inside the bubble; the under-bubble meta row is hidden */
+  .bubbleTimeIn {
+    display: block;
+    text-align: right;
+    margin-top: 3px;
+    font-size: 10.5px;
+    font-weight: 600;
+    color: rgba(26, 26, 26, 0.5);
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .structuredTimeIn { margin: 0 12px 8px; }
+  .bubbleMeta { display: none; }
   .bubble {
     font-size: 15px;
     line-height: 1.5;
@@ -1283,14 +1372,23 @@
   }
   .structuredCard { border: 2px solid var(--nb-ink); box-shadow: var(--nb-shadow-sm); }
   .structuredTag { border: 1.5px solid var(--nb-ink); }
-  .systemBubble { border: 2px solid var(--nb-ink); box-shadow: var(--nb-shadow-sm); }
+  /* System message (resolved/reopened) — full width, never clipped */
+  .systemMsg { gap: 6px; }
+  .systemLine { display: none; }
+  .systemBubble {
+    border: 2px solid var(--nb-ink);
+    box-shadow: var(--nb-shadow-sm);
+    max-width: 100%;
+    flex: 1;
+    min-width: 0;
+  }
   .attachmentThumb { width: 44vw; height: 34vw; border: 2px solid var(--nb-ink); }
   .lightboxClose { top: -44px; width: 44px; height: 44px; font-size: 24px; }
 
-  /* Reply area — pinned compose */
+  /* Reply area — pinned compose, compact */
   .replyArea {
     border-top: 3px solid var(--nb-ink);
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
     background: var(--surface);
   }
 
@@ -1347,10 +1445,11 @@
 
   .textarea {
     flex: 1;
-    min-height: 46px;
+    min-height: 44px;
     max-height: 32dvh;
     border: 2px solid var(--nb-ink);
-    border-radius: 14px;
+    border-radius: 22px;
+    padding: 11px 16px;
     font-size: 16px;
   }
   .textarea:focus { box-shadow: var(--nb-shadow-sm); }
@@ -1358,36 +1457,37 @@
   .textareaNote { background: var(--nb-yellow-soft); border-color: var(--nb-ink); color: var(--nb-ink); }
   .expandBtn { display: none; }
 
-  /* Bottom row */
-  .replyBottom {
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 8px;
+  /* Inline send button (WhatsApp style) — replaces the full-width send row */
+  .mobileSend {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border: 2px solid var(--nb-ink);
+    border-radius: 50%;
+    background: var(--nb-sky);
+    color: var(--nb-ink);
+    box-shadow: var(--nb-shadow-sm);
   }
+  .mobileSend:active:not(:disabled) { transform: translate(1px, 1px); box-shadow: none; }
+  .mobileSend:disabled { opacity: 0.4; }
+  .mobileSendNote { background: var(--nb-yellow); }
+  .mobileSendDots { font-size: 18px; font-weight: 800; line-height: 1; }
+
+  /* Bottom row — only AI helper chips remain; send + hint live in the editor row */
+  .replyBottom { margin-top: 0; }
+  .replyBottom .sendBtn { display: none; }
+  .hint { display: none; }
   .replyBottom > div {
-    order: 2;
     width: 100%;
     overflow-x: auto;
     flex-wrap: nowrap !important;
     scrollbar-width: none;
-    padding-bottom: 2px;
   }
   .replyBottom > div::-webkit-scrollbar { display: none; }
-  .aiBtn, .grammarBtn, .aiUndoBtn { flex-shrink: 0; border: 2px solid var(--nb-ink); font-weight: 700; min-height: 38px; }
-  .sendBtn {
-    order: 1;
-    width: 100%;
-    min-height: 50px;
-    font-size: 15px;
-    font-weight: 800;
-    border: 3px solid var(--nb-ink);
-    border-radius: 14px;
-    background: var(--nb-sky);
-    color: var(--nb-ink);
-    box-shadow: var(--nb-shadow);
-  }
-  .sendBtn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: var(--nb-shadow-sm); }
-  .sendBtnNote { background: var(--nb-yellow); }
+  .aiBtn, .grammarBtn, .aiUndoBtn { flex-shrink: 0; border: 2px solid var(--nb-ink); font-weight: 700; min-height: 36px; margin-top: 6px; }
 
   /* Template picker — bottom sheet */
   .tplPicker {

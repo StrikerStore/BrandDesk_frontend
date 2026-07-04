@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import { useThread } from '../../hooks/useThread.js';
 import { fetchTemplates, trackTemplateUse, updateThread, resolveThread, improveText, fetchThreadActions } from '../../utils/api.js';
-import { formatFullTime, resolveTemplate, STATUS_CONFIG, PRIORITY_CONFIG, getBrandColor, statusSince } from '../../utils/helpers.js';
+import { formatFullTime, formatClock, formatDayLabel, resolveTemplate, STATUS_CONFIG, PRIORITY_CONFIG, getBrandColor, getInitials, statusSince } from '../../utils/helpers.js';
 import TemplateEditor from '../Templates/TemplateEditor.jsx';
 import ActionModal from './ActionModal.jsx';
 import ActionPanel from './ActionPanel.jsx';
@@ -31,6 +31,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
   const [attachments, setAttachments]       = useState([]); // File[]
   const [isExpanded, setIsExpanded]         = useState(false);
   const [showComposeTools, setShowComposeTools] = useState(false); // mobile: collapse toolbar
+  const [headerDetailsOpen, setHeaderDetailsOpen] = useState(false); // mobile: WhatsApp-style collapsed header
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [linkUrl, setLinkUrl]               = useState('');
   const savedRangeRef                       = useRef(null); // saved selection for link insert
@@ -246,6 +247,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
     setAttachments([]);
     setIsExpanded(false);
     setShowComposeTools(false);
+    setHeaderDetailsOpen(false);
   }, [threadId]);
 
   // Load templates once
@@ -388,8 +390,8 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
 
   return (
     <div className={styles.root}>
-      {/* Thread header */}
-      <div className={styles.header}>
+      {/* Thread header — collapses to a single WhatsApp-style row on mobile */}
+      <div className={`${styles.header} ${onBack && !headerDetailsOpen ? styles.headerCollapsed : ''}`}>
         <div className={styles.headerTop}>
           {onBack && (
             <button className={styles.backBtn} onClick={onBack} aria-label="Back to inbox">
@@ -397,6 +399,11 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
+          )}
+          {onBack && (
+            <div className={styles.headerAvatar} style={{ background: brandColor.bg, color: brandColor.text }}>
+              {getInitials(displayName) || '?'}
+            </div>
           )}
           <div className={styles.headerCustomer}>
             <span className={styles.headerName}>{displayName}</span>
@@ -409,14 +416,30 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
               )}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-            {onOpenCustomer && (
-              <button className={styles.customerBtn} onClick={onOpenCustomer} aria-label="Customer details">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                </svg>
-              </button>
-            )}
+          {(onOpenCustomer || onBack) && (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+              {onOpenCustomer && (
+                <button className={styles.customerBtn} onClick={onOpenCustomer} aria-label="Customer details">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                  </svg>
+                </button>
+              )}
+              {onBack && (
+                <button
+                  className={`${styles.detailsToggle} ${headerDetailsOpen ? styles.detailsToggleOpen : ''}`}
+                  onClick={() => setHeaderDetailsOpen(v => !v)}
+                  aria-label={headerDetailsOpen ? 'Hide ticket details' : 'Show ticket details'}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                  {!headerDetailsOpen && actionSummary.open > 0 && <span className={styles.toggleDot} />}
+                </button>
+              )}
+            </div>
+          )}
+          <div className={styles.headerControls} style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
             {/* Priority selector */}
             <select
               className={styles.prioritySelect}
@@ -514,9 +537,24 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
 
       {/* Messages */}
       <div className={styles.messages}>
-        {messages.map((msg, i) => (
-          <MessageBubble key={msg.id || i} message={msg} thread={thread} />
-        ))}
+        {messages.map((msg, i) => {
+          const prev = messages[i - 1];
+          const newDay = !prev || new Date(prev.sent_at).toDateString() !== new Date(msg.sent_at).toDateString();
+          const grouped = !newDay && prev
+            && prev.direction === msg.direction
+            && !!prev.is_note === !!msg.is_note
+            && prev.from_email !== 'system' && msg.from_email !== 'system';
+          return (
+            <Fragment key={msg.id || i}>
+              {newDay && (
+                <div className={styles.dateSep}>
+                  <span className={styles.dateSepChip}>{formatDayLabel(msg.sent_at)}</span>
+                </div>
+              )}
+              <MessageBubble message={msg} thread={thread} grouped={grouped} />
+            </Fragment>
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
@@ -718,6 +756,21 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
               : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 10l6 6 6-6"/></svg>
             }
           </button>
+          {/* Mobile-only inline send — desktop keeps the button in replyBottom */}
+          <button
+            className={`${styles.mobileSend} ${isNote ? styles.mobileSendNote : ''}`}
+            onClick={handleSend}
+            disabled={!replyText.trim() || sending}
+            aria-label={isNote ? 'Save note' : 'Send reply'}
+            type="button"
+          >
+            {sending
+              ? <span className={styles.mobileSendDots}>…</span>
+              : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
+                </svg>
+            }
+          </button>
         </div>
 
         {/* Attachment list */}
@@ -898,7 +951,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
   );
 }
 
-function MessageBubble({ message, thread }) {
+function MessageBubble({ message, thread, grouped }) {
   const isOutbound = message.direction === 'outbound';
   const isNote     = !!message.is_note;
   const isSystem   = message.from_email === 'system';
@@ -927,11 +980,11 @@ function MessageBubble({ message, thread }) {
   );
 
   if (isStructured && !isOutbound) {
-    return <StructuredMessage message={message} thread={thread} />;
+    return <StructuredMessage message={message} thread={thread} grouped={grouped} />;
   }
 
   return (
-    <div className={`${styles.msgWrap} ${isOutbound ? styles.msgOutbound : styles.msgInbound}`}>
+    <div className={`${styles.msgWrap} ${isOutbound ? styles.msgOutbound : styles.msgInbound} ${grouped ? styles.msgGrouped : ''}`}>
       <div className={`${styles.bubble} ${isOutbound ? styles.bubbleOut : styles.bubbleIn} ${isNote ? styles.bubbleNote : ''}`}>
         {message.body && (
           isOutbound
@@ -958,6 +1011,8 @@ function MessageBubble({ message, thread }) {
             ))}
           </div>
         )}
+        {/* Mobile-only WhatsApp-style timestamp inside the bubble */}
+        <span className={styles.bubbleTimeIn}>{isNote ? 'Note · ' : ''}{formatClock(message.sent_at)}</span>
       </div>
       <div className={styles.bubbleMeta}>
         {isNote && <span className={styles.noteTag}>Internal note</span>}
@@ -996,7 +1051,7 @@ function MessageImage({ attachment }) {
 }
 
 // Renders the parsed Shopify ticket form as a clean structured card
-function StructuredMessage({ message, thread }) {
+function StructuredMessage({ message, thread, grouped }) {
   // Split at blank line to separate metadata from actual message
   const lines = message.body.split('\n');
   const metaLines = lines.filter(l => l.match(/^[🎫📦🏷📞🌍]/));
@@ -1004,7 +1059,7 @@ function StructuredMessage({ message, thread }) {
   const customerMsg = bodyStart >= 0 ? lines.slice(bodyStart + 1).join('\n').trim() : '';
 
   return (
-    <div className={`${styles.msgWrap} ${styles.msgInbound}`}>
+    <div className={`${styles.msgWrap} ${styles.msgInbound} ${grouped ? styles.msgGrouped : ''}`}>
       <div className={styles.structuredCard}>
         {/* Meta info row */}
         <div className={styles.structuredMeta}>
@@ -1025,6 +1080,7 @@ function StructuredMessage({ message, thread }) {
             <p className={styles.bubbleText}>{customerMsg}</p>
           </div>
         )}
+        <span className={`${styles.bubbleTimeIn} ${styles.structuredTimeIn}`}>{formatClock(message.sent_at)}</span>
       </div>
       <div className={styles.bubbleMeta}>
         <span className={styles.bubbleTime}>{formatFullTime(message.sent_at)}</span>

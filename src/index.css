@@ -132,6 +132,9 @@ textarea { resize: none; }
 
   body { font-size: 15px; }
 
+  /* Kill the dark grey/orange overlay browsers paint on tap */
+  * { -webkit-tap-highlight-color: transparent; }
+
   /* 16px inputs prevent iOS auto-zoom on focus */
   input, textarea, select { font-size: 16px; }
 

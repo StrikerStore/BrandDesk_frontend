@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   fetchAnalyticsOverview, fetchAnalyticsVolume, fetchAnalyticsByBrand,
   fetchAnalyticsByIssue, fetchAnalyticsResponse, fetchAnalyticsResolvedBy,
-  fetchAnalyticsSla, fetchAnalyticsTemplates,
+  fetchAnalyticsSla,
 } from '../../utils/api.js';
 import styles from './Dashboard.module.css';
 
@@ -12,6 +12,8 @@ const RANGE_OPTIONS = [
   { label: '30 days', value: 30 },
   { label: '90 days', value: 90 },
 ];
+
+const rangeLabel = (range) => range === 1 ? 'Today' : `Last ${range} days`;
 
 function formatMins(mins) {
   if (!mins && mins !== 0) return '—';
@@ -31,7 +33,6 @@ export default function Dashboard({ onClose, sidebarWidth }) {
   const [responseTime, setResponse] = useState([]);
   const [resolvedBy, setResolvedBy] = useState([]);
   const [sla, setSla]               = useState(null);
-  const [templates, setTemplates]   = useState([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState(null);
 
@@ -39,15 +40,14 @@ export default function Dashboard({ onClose, sidebarWidth }) {
     setLoading(true);
     setError(null);
     try {
-      const [ov, vol, brand, issue, resp, resBy, slaData, tplData] = await Promise.all([
-        fetchAnalyticsOverview(),
+      const [ov, vol, brand, issue, resp, resBy, slaData] = await Promise.all([
+        fetchAnalyticsOverview(range),
         fetchAnalyticsVolume(range),
-        fetchAnalyticsByBrand(),
-        fetchAnalyticsByIssue(),
+        fetchAnalyticsByBrand(range),
+        fetchAnalyticsByIssue(range),
         fetchAnalyticsResponse(range),
-        fetchAnalyticsResolvedBy(),
+        fetchAnalyticsResolvedBy(range),
         fetchAnalyticsSla(),
-        fetchAnalyticsTemplates(),
       ]);
       setOverview(ov.data);
       setVolume(vol.data || []);
@@ -56,7 +56,6 @@ export default function Dashboard({ onClose, sidebarWidth }) {
       setResponse(resp.data || []);
       setResolvedBy(resBy.data || []);
       setSla(slaData.data);
-      setTemplates(tplData.data || []);
     } catch (err) {
       console.error('Analytics load error:', err);
       setError(err.message);
@@ -78,7 +77,7 @@ export default function Dashboard({ onClose, sidebarWidth }) {
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <h1 className={styles.title}>Analytics</h1>
+          <h1 className={styles.title}>Insights</h1>
           <div className={styles.rangeToggle}>
             {RANGE_OPTIONS.map(o => (
               <button key={o.value}
@@ -109,14 +108,14 @@ export default function Dashboard({ onClose, sidebarWidth }) {
       ) : (
         <div className={styles.body}>
 
-          {/* Overview cards */}
+          {/* Overview cards — activity is range-scoped, backlog is right now */}
           <div className={styles.cardGrid}>
-            <StatCard label="Open"             value={overview?.open}             color="amber"  />
-            <StatCard label="In progress"      value={overview?.in_progress}      color="blue"   />
-            <StatCard label="Resolved today"   value={overview?.today_resolved}   color="green"  />
-            <StatCard label="New today"        value={overview?.today_new}        color="purple" />
-            <StatCard label="Urgent open"      value={overview?.urgent}           color="red"    />
-            <StatCard label="Avg first response" value={formatMins(overview?.avg_response_mins)} color="gray" isText />
+            <StatCard label={`New · ${rangeLabel(range)}`}      value={overview?.range_new}      color="purple" />
+            <StatCard label={`Resolved · ${rangeLabel(range)}`} value={overview?.range_resolved} color="green"  />
+            <StatCard label="Avg first response" value={formatMins(overview?.range_avg_response_mins)} color="blue" isText />
+            <StatCard label="Open now"          value={overview?.open}        color="amber" />
+            <StatCard label="In progress now"   value={overview?.in_progress} color="blue"  />
+            <StatCard label="Urgent now"        value={overview?.urgent}      color="red"   />
           </div>
 
           {/* SLA Banner */}
@@ -152,7 +151,7 @@ export default function Dashboard({ onClose, sidebarWidth }) {
             <div className={styles.chartCard}>
               <div className={styles.chartHeader}>
                 <span className={styles.chartTitle}>Ticket volume</span>
-                <span className={styles.chartSub}>Last {range === 1 ? 'today' : `${range} days`}</span>
+                <span className={styles.chartSub}>{rangeLabel(range)}</span>
               </div>
               {volume.filter(d => d.total > 0).length === 0 ? (
                 <Empty text="No ticket data for this period" />
@@ -168,7 +167,7 @@ export default function Dashboard({ onClose, sidebarWidth }) {
             <div className={styles.chartCard}>
               <div className={styles.chartHeader}>
                 <span className={styles.chartTitle}>Avg first response time</span>
-                <span className={styles.chartSub}>Minutes to first reply</span>
+                <span className={styles.chartSub}>{rangeLabel(range)} · minutes to first reply</span>
               </div>
               {responseTime.length === 0 ? (
                 <Empty text="No response time data yet — send some replies first" />
@@ -183,6 +182,7 @@ export default function Dashboard({ onClose, sidebarWidth }) {
             <div className={styles.chartCard}>
               <div className={styles.chartHeader}>
                 <span className={styles.chartTitle}>By brand</span>
+                <span className={styles.chartSub}>{rangeLabel(range)}</span>
               </div>
               {byBrand.length === 0 ? <Empty text="No brand data" /> : (
                 <table className={styles.table}>
@@ -210,6 +210,7 @@ export default function Dashboard({ onClose, sidebarWidth }) {
             <div className={styles.chartCard}>
               <div className={styles.chartHeader}>
                 <span className={styles.chartTitle}>Top issue categories</span>
+                <span className={styles.chartSub}>{rangeLabel(range)}</span>
               </div>
               {byIssue.length === 0 ? (
                 <Empty text="No issue data yet — issue categories come from parsed Shopify tickets" />
@@ -224,7 +225,7 @@ export default function Dashboard({ onClose, sidebarWidth }) {
             <div className={styles.chartCard}>
               <div className={styles.chartHeader}>
                 <span className={styles.chartTitle}>Resolved by</span>
-                <span className={styles.chartSub}>All time</span>
+                <span className={styles.chartSub}>{rangeLabel(range)}</span>
               </div>
               {resolvedBy.length === 0 ? (
                 <Empty text="No resolved tickets yet — resolve some tickets to see the leaderboard" />
@@ -276,71 +277,6 @@ export default function Dashboard({ onClose, sidebarWidth }) {
                   ))}
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Template usage */}
-          <div className={styles.twoCol}>
-            <div className={styles.chartCard}>
-              <div className={styles.chartHeader}>
-                <span className={styles.chartTitle}>Most used templates</span>
-                <span className={styles.chartSub}>All time</span>
-              </div>
-              {templates.length === 0 ? (
-                <Empty text="No template usage yet — use templates when replying to tickets" />
-              ) : (
-                <table className={styles.table}>
-                  <thead><tr><th>Template</th><th>Category</th><th>Used</th></tr></thead>
-                  <tbody>
-                    {templates.map(t => (
-                      <tr key={t.id}>
-                        <td style={{ fontWeight: 500 }}>{t.title}</td>
-                        <td className={styles.muted}>{t.category}</td>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{
-                              height: 6, borderRadius: 99,
-                              background: '#93c5fd',
-                              width: `${Math.max(12, (t.usage_count / templates[0].usage_count) * 80)}px`
-                            }} />
-                            <strong>{t.usage_count}</strong>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-
-            {/* Placeholder for future chart */}
-            <div className={styles.chartCard}>
-              <div className={styles.chartHeader}>
-                <span className={styles.chartTitle}>Quick stats</span>
-              </div>
-              <div className={styles.quickStats}>
-                <div className={styles.quickStat}>
-                  <span className={styles.quickStatVal}>{overview?.total || 0}</span>
-                  <span className={styles.quickStatLabel}>Total tickets all time</span>
-                </div>
-                <div className={styles.quickStatDivider} />
-                <div className={styles.quickStat}>
-                  <span className={styles.quickStatVal}>
-                    {overview?.total > 0 ? Math.round((overview.resolved / overview.total) * 100) : 0}%
-                  </span>
-                  <span className={styles.quickStatLabel}>Resolution rate</span>
-                </div>
-                <div className={styles.quickStatDivider} />
-                <div className={styles.quickStat}>
-                  <span className={styles.quickStatVal}>{templates.reduce((a, t) => a + t.usage_count, 0)}</span>
-                  <span className={styles.quickStatLabel}>Total template uses</span>
-                </div>
-                <div className={styles.quickStatDivider} />
-                <div className={styles.quickStat}>
-                  <span className={styles.quickStatVal}>{resolvedBy.length}</span>
-                  <span className={styles.quickStatLabel}>Active agents</span>
-                </div>
-              </div>
             </div>
           </div>
 

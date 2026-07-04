@@ -418,7 +418,7 @@ function ThreadRow({ thread, selected, onSelect }) {
 
   return (
     <button
-      className={`${styles.threadRow} ${selected ? styles.threadSelected : ''} ${thread.priority === 'urgent' ? styles.threadUrgent : ''} ${slaStatus === 'breached' ? styles.threadBreached : slaStatus === 'at_risk' ? styles.threadAtRisk : ''}`}
+      className={`${styles.threadRow} ${selected ? styles.threadSelected : ''} ${thread.is_unread ? styles.threadUnread : ''} ${thread.priority === 'urgent' ? styles.threadUrgent : ''} ${slaStatus === 'breached' ? styles.threadBreached : slaStatus === 'at_risk' ? styles.threadAtRisk : ''}`}
       onClick={onSelect}
     >
       {thread.is_unread ? <span className={styles.unreadDot} /> : null}

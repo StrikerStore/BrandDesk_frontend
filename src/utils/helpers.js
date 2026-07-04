@@ -24,6 +24,25 @@ export function formatFullTime(dateStr) {
     hour: '2-digit', minute: '2-digit', hour12: true,
   });
 }
+
+// Short clock time for in-bubble timestamps: "2:30 pm"
+export function formatClock(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
+// WhatsApp-style day label for date separators: Today / Yesterday / 4 Jul 2026
+export function formatDayLabel(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const now = new Date();
+  const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
  
 // Resolve template variables
 export function resolveTemplate(body, vars = {}) {

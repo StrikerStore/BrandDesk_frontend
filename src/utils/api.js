@@ -40,13 +40,13 @@ export const trackTemplateUse = (id)          => api.post(`/api/templates/${id}/
 // Brands
 export const fetchBrands = () => api.get('/api/brands');
 
-// Analytics
-export const fetchAnalyticsOverview   = ()        => api.get('/api/analytics/overview');
+// Analytics — all range-aware endpoints accept days (1 = today)
+export const fetchAnalyticsOverview   = (days=30) => api.get('/api/analytics/overview',      { params: { days } });
 export const fetchAnalyticsVolume     = (days=30) => api.get('/api/analytics/volume',        { params: { days } });
-export const fetchAnalyticsByBrand    = ()        => api.get('/api/analytics/by-brand');
-export const fetchAnalyticsByIssue    = ()        => api.get('/api/analytics/by-issue');
+export const fetchAnalyticsByBrand    = (days=30) => api.get('/api/analytics/by-brand',      { params: { days } });
+export const fetchAnalyticsByIssue    = (days=30) => api.get('/api/analytics/by-issue',      { params: { days } });
 export const fetchAnalyticsResponse   = (days=30) => api.get('/api/analytics/response-time', { params: { days } });
-export const fetchAnalyticsResolvedBy = ()        => api.get('/api/analytics/resolved-by');
+export const fetchAnalyticsResolvedBy = (days=30) => api.get('/api/analytics/resolved-by',   { params: { days } });
 export const fetchAnalyticsSla        = ()        => api.get('/api/analytics/sla');
 export const fetchAnalyticsTemplates  = ()        => api.get('/api/analytics/templates');
 

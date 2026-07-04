@@ -671,23 +671,23 @@
     background: var(--bg);
   }
 
-  /* Header — sticky */
+  /* Header — sticky, compact */
   .header {
     position: sticky;
     top: 0;
     z-index: 30;
     background: var(--surface);
-    padding: calc(12px + env(safe-area-inset-top)) 16px 0;
+    padding: calc(8px + env(safe-area-inset-top)) 14px 0;
     border-bottom: 3px solid var(--nb-ink);
   }
-  .headerTop { margin-bottom: 12px; }
-  .logoText { font-size: 20px; font-weight: 800; letter-spacing: -0.4px; }
+  .headerTop { margin-bottom: 6px; }
+  .logoText { font-size: 18px; font-weight: 800; letter-spacing: -0.4px; }
 
   .iconBtn {
-    width: 42px;
-    height: 42px;
+    width: 38px;
+    height: 38px;
     border: 2px solid var(--nb-ink);
-    border-radius: 12px;
+    border-radius: 11px;
     background: var(--nb-sky);
     color: var(--nb-ink);
     box-shadow: var(--nb-shadow-sm);
@@ -695,8 +695,8 @@
   .iconBtn:active { transform: translate(1px, 1px); box-shadow: none; }
   .iconBtn:nth-child(2) { background: var(--nb-mint); }
 
-  .inboxMeta { border-bottom: none; padding-bottom: 12px; }
-  .inboxLabel { font-size: 15px; font-weight: 800; color: var(--nb-ink); }
+  .inboxMeta { border-bottom: none; padding-bottom: 8px; }
+  .inboxLabel { font-size: 14px; font-weight: 800; color: var(--nb-ink); }
   .unreadBadge, .urgentBadge {
     font-size: 11px;
     font-weight: 800;
@@ -709,11 +709,11 @@
 
   /* Search */
   .searchWrap {
-    margin: 12px 16px 0;
+    margin: 8px 14px 0;
     padding: 0 12px;
-    height: 46px;
+    height: 42px;
     border: 2px solid var(--nb-ink);
-    border-radius: 14px;
+    border-radius: 13px;
     background: var(--surface);
     box-shadow: var(--nb-shadow-sm);
   }
@@ -729,7 +729,7 @@
   .searchBtnActive { background: var(--nb-lav); color: var(--nb-ink); border-color: var(--nb-ink); }
 
   /* Saved views — horizontal scroll */
-  .savedViews { border-bottom: none; padding: 10px 16px 2px; }
+  .savedViews { border-bottom: none; padding: 8px 14px 0; }
   .savedViewsRow {
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -740,7 +740,7 @@
   .savedViewsRow::-webkit-scrollbar { display: none; }
   .viewPill {
     flex-shrink: 0;
-    height: 36px;
+    height: 32px;
     border: 2px solid var(--nb-ink);
     font-weight: 700;
   }
@@ -748,14 +748,14 @@
   .viewPillDelete { color: var(--nb-ink); font-size: 11px; }
   .addViewBtn {
     flex-shrink: 0;
-    height: 36px;
+    height: 32px;
     border: 2px dashed var(--nb-ink);
     color: var(--nb-ink);
     font-weight: 700;
   }
 
   /* Brand pills — horizontal scroll */
-  .filterSection { padding: 12px 16px 0; }
+  .filterSection { padding: 8px 14px 0; }
   .pills {
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -766,33 +766,40 @@
   .pills::-webkit-scrollbar { display: none; }
   .pill {
     flex-shrink: 0;
-    height: 34px;
-    font-size: 13px;
+    height: 32px;
+    font-size: 12.5px;
     font-weight: 700;
-    padding: 0 14px;
+    padding: 0 13px;
     border: 2px solid var(--nb-ink);
     color: var(--nb-ink);
     background: var(--surface);
   }
-  .pillActive { background: var(--nb-ink); color: #fff; box-shadow: var(--nb-shadow-sm); }
+  .pillActive { background: var(--nb-lav); color: var(--nb-ink); box-shadow: var(--nb-shadow-sm); }
   .pillBrandActive { box-shadow: var(--nb-shadow-sm); }
 
-  /* Status tabs — segmented */
+  /* Status tabs — one scrollable row, never cut off */
   .statusTabs {
     gap: 6px;
-    padding: 12px 16px;
+    padding: 8px 14px;
     border-bottom: 3px solid var(--nb-ink);
     background: var(--surface);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
+  .statusTabs::-webkit-scrollbar { display: none; }
   .statusTab {
-    padding: 9px 4px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: 0 13px;
     font-size: 12.5px;
     font-weight: 800;
     color: var(--nb-ink);
     border: 2px solid var(--nb-ink);
-    border-radius: 12px;
+    border-radius: 11px;
     background: var(--surface);
-    min-height: 42px;
+    min-height: 38px;
   }
   .statusTabActive {
     background: var(--nb-peach);
@@ -817,38 +824,49 @@
     overscroll-behavior: contain;
     background: var(--bg);
   }
+  /* WhatsApp-style rows: circle avatar · name+time · ticket line · unread badge */
   .threadRow {
     gap: 12px;
-    padding: 14px 16px;
-    min-height: 78px;
-    border-bottom: 2px solid rgba(26, 26, 26, 0.12);
+    padding: 11px 14px;
+    min-height: 66px;
+    border-bottom: 2px solid rgba(26, 26, 26, 0.1);
     align-items: center;
   }
   .threadRow:active { background: var(--nb-yellow-soft); }
   .threadRow:hover { background: transparent; }
 
   .avatar {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border: 2px solid var(--nb-ink);
-    border-radius: 12px;
-    font-size: 14px;
+    border-radius: 50%;
+    font-size: 15px;
     font-weight: 800;
   }
-  .threadName { font-size: 15px; font-weight: 700; max-width: 180px; }
+  .threadTop { margin-bottom: 1px; }
+  .threadName { font-size: 15.5px; font-weight: 700; max-width: 190px; }
   .threadTime { font-size: 11px; }
-  .threadSubject { font-size: 13px; }
-  .brandTag {
-    font-size: 10.5px;
-    font-weight: 700;
-    border: 1.5px solid var(--nb-ink);
+  .threadSubject {
+    font-size: 13px;
+    margin-bottom: 0;
+    padding-right: 28px; /* clear the unread badge */
   }
-  .tagPill { border: 1.5px solid rgba(26, 26, 26, 0.3); font-weight: 600; }
+  /* Chips line hidden — brand colors the avatar, SLA/urgent keep row tint + avatar dots */
+  .threadMeta { display: none; }
+
+  /* Unread: bold row + counter-style badge under the time */
+  .threadUnread .threadName { font-weight: 800; }
+  .threadUnread .threadSubject { font-weight: 600; color: var(--nb-ink); }
+  .threadUnread .threadTime { font-weight: 800; color: var(--nb-ink); }
   .unreadDot {
-    width: 10px;
-    height: 10px;
+    top: auto;
+    bottom: 14px;
+    right: 14px;
+    width: 16px;
+    height: 16px;
     border: 1.5px solid var(--nb-ink);
     background: var(--nb-sky);
+    box-shadow: 1px 1px 0 var(--nb-ink);
   }
 
   /* User menu — neubrutalist card */
