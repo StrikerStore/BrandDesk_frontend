@@ -474,3 +474,83 @@
   transition: opacity 0.12s;
 }
 .closeActionBtn:hover { opacity: 0.8; }
+
+/* ============================================================
+   MOBILE — Neubrutalism actions (table → cards) (<= 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+  .root {
+    top: 0;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    background: var(--bg);
+  }
+
+  /* Header */
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+    border-bottom: 3px solid var(--nb-ink);
+    background: var(--surface);
+  }
+  .title { font-size: 22px; font-weight: 800; }
+  .summaryBadge { border: 1.5px solid var(--nb-ink) !important; font-weight: 800; }
+  .headerRight { justify-content: flex-start; }
+  .filterGroup { border: 2px solid var(--nb-ink); border-radius: 12px; }
+  .filterBtn { min-height: 38px; font-weight: 700; }
+  .filterBtnActive { background: var(--nb-lav); box-shadow: var(--nb-shadow-sm); }
+  .typeSelect { min-height: 42px; border: 2px solid var(--nb-ink); border-radius: 10px; font-weight: 700; }
+  .closeBtn { display: none; }
+
+  /* Table → cards */
+  .tableWrap { padding: 12px 12px calc(20px + env(safe-area-inset-bottom)); }
+  .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+  .table thead { display: none; }
+
+  .table tr {
+    border: 2px solid var(--nb-ink);
+    border-radius: 16px;
+    box-shadow: var(--nb-shadow-sm);
+    background: var(--surface);
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  .row td { padding: 6px 0; vertical-align: initial; }
+  .row td:empty { display: none; }
+
+  .ticketName { font-size: 15px; font-weight: 800; }
+  .ticketId { border: 1.5px solid var(--nb-ink); }
+  .brandTag { border: 1.5px solid var(--nb-ink); }
+  .typeBadge { border-width: 2px !important; font-size: 12px; }
+
+  .jerseyValue, .fieldRowValue { font-size: 13.5px; }
+  .checkbox { width: 20px; height: 20px; border: 2px solid var(--nb-ink); }
+  .checkLabel { font-size: 13.5px; }
+  .checkItem { min-height: 32px; }
+
+  .jerseyTextarea, .inlineInput { font-size: 16px; border: 2px solid var(--nb-ink); border-radius: 8px; min-height: 40px; }
+  .inlineSave { min-height: 38px; border: 2px solid var(--nb-ink); font-weight: 800; }
+
+  .dateCell::before {
+    content: 'Logged ';
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 10px;
+  }
+
+  .actionsCell { width: 100%; text-align: left; }
+  .closeActionBtn {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;
+    border: 2px solid var(--nb-ink);
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 800;
+    background: var(--nb-mint);
+    color: var(--nb-ink);
+    margin-top: 6px;
+  }
+}

@@ -251,3 +251,55 @@
 }
 .submitBtn:hover:not(:disabled) { opacity: 0.88; }
 .submitBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ============================================================
+   MOBILE — Neubrutalism action wizard sheet (<= 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+  .overlay { align-items: flex-end; }
+  .modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    overflow-y: auto;
+    border: 3px solid var(--nb-ink);
+    border-bottom: none;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -6px 0 var(--nb-ink);
+  }
+  .header {
+    padding: 16px 18px;
+    border-bottom: 3px solid var(--nb-ink);
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 2;
+  }
+  .title { font-size: 18px; font-weight: 800; }
+  .closeBtn { font-size: 20px; min-width: 40px; min-height: 40px; }
+
+  .body { padding: 18px 16px calc(20px + env(safe-area-inset-bottom)); }
+  .typeCard { padding: 14px; border: 2px solid var(--nb-ink); min-height: 60px; }
+  .typeCardActive { box-shadow: var(--nb-shadow-sm); }
+  .typeLabel { font-size: 15px; font-weight: 800; }
+
+  .fieldInput, .fieldTextarea {
+    min-height: 48px;
+    font-size: 16px;
+    border: 2px solid var(--nb-ink);
+    border-radius: 10px;
+  }
+  .fieldTextarea { min-height: 96px; }
+
+  .footer { flex-direction: column-reverse; gap: 10px; }
+  .cancelBtn, .nextBtn, .submitBtn {
+    width: 100%;
+    min-height: 50px;
+    border: 2px solid var(--nb-ink);
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 800;
+  }
+  .nextBtn { background: var(--nb-sky); color: var(--nb-ink); }
+  .submitBtn { background: var(--nb-mint); color: var(--nb-ink); }
+}

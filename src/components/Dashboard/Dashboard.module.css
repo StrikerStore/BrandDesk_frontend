@@ -328,3 +328,67 @@
   height: 1px;
   background: var(--border);
 }
+
+/* ============================================================
+   MOBILE — Neubrutalism insights (<= 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+  .root {
+    left: 0 !important;
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    z-index: 40;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+    border-bottom: 3px solid var(--nb-ink);
+  }
+  .headerLeft { flex-direction: column; align-items: stretch; gap: 12px; }
+  .title { font-size: 22px; font-weight: 800; }
+  .rangeToggle {
+    border: 2px solid var(--nb-ink);
+    border-radius: 12px;
+    justify-content: space-between;
+  }
+  .rangeBtn { flex: 1; min-height: 40px; font-weight: 700; }
+  .rangeBtnActive { background: var(--nb-lav); box-shadow: var(--nb-shadow-sm); }
+  .closeBtn { display: none; }
+
+  .body {
+    padding: 16px 14px calc(24px + env(safe-area-inset-bottom));
+    gap: 16px;
+  }
+
+  /* Stat cards → 2 columns */
+  .cardGrid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .statCard {
+    border-width: 2px !important;
+    border-color: var(--nb-ink) !important;
+    box-shadow: var(--nb-shadow-sm);
+  }
+  .statValue { font-size: 24px; font-weight: 800; }
+
+  /* SLA banner stacks */
+  .slaBanner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    border: 2px solid var(--nb-ink);
+    box-shadow: var(--nb-shadow-sm);
+  }
+  .slaStats { justify-content: space-around; }
+  .slaNum { font-size: 20px; }
+
+  /* Charts → single column */
+  .twoCol { grid-template-columns: 1fr; gap: 14px; }
+  .chartCard {
+    border: 2px solid var(--nb-ink);
+    box-shadow: var(--nb-shadow-sm);
+    overflow-x: auto;
+  }
+  .hBarLabel { width: 92px; font-size: 12px; }
+  .chartTitle { font-size: 14px; font-weight: 800; }
+}

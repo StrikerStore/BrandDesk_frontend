@@ -7,7 +7,7 @@ import ActionModal from './ActionModal.jsx';
 import ActionPanel from './ActionPanel.jsx';
 import styles from './ThreadPanel.module.css';
 
-export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
+export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, onOpenCustomer }) {
   const { thread, messages, loading, sending, reply, patchStatus, setThread, reload } = useThread(threadId);
 
   const [replyText, setReplyText]           = useState('');
@@ -30,6 +30,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
   const [aiOriginal, setAiOriginal]         = useState(null); // for undo
   const [attachments, setAttachments]       = useState([]); // File[]
   const [isExpanded, setIsExpanded]         = useState(false);
+  const [showComposeTools, setShowComposeTools] = useState(false); // mobile: collapse toolbar
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [linkUrl, setLinkUrl]               = useState('');
   const savedRangeRef                       = useRef(null); // saved selection for link insert
@@ -244,6 +245,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
     setShowTemplates(false);
     setAttachments([]);
     setIsExpanded(false);
+    setShowComposeTools(false);
   }, [threadId]);
 
   // Load templates once
@@ -257,7 +259,11 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
       if (tplRef.current && !tplRef.current.contains(e.target)) setShowTemplates(false);
     };
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('touchstart', handler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('touchstart', handler);
+    };
   }, []);
 
   const handleKeyDown = (e) => {
@@ -385,6 +391,13 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
       {/* Thread header */}
       <div className={styles.header}>
         <div className={styles.headerTop}>
+          {onBack && (
+            <button className={styles.backBtn} onClick={onBack} aria-label="Back to inbox">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+          )}
           <div className={styles.headerCustomer}>
             <span className={styles.headerName}>{displayName}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -397,6 +410,13 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+            {onOpenCustomer && (
+              <button className={styles.customerBtn} onClick={onOpenCustomer} aria-label="Customer details">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+                </svg>
+              </button>
+            )}
             {/* Priority selector */}
             <select
               className={styles.prioritySelect}
@@ -553,7 +573,8 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
           </div>
         )}
 
-        {/* Toolbar */}
+        {/* Toolbar (collapsible on mobile via .composeTools) */}
+        <div className={`${styles.composeTools} ${showComposeTools ? styles.composeToolsOpen : ''}`}>
         <div className={styles.toolbar}>
           <button
             className={`${styles.toolBtn} ${showTemplates ? styles.toolBtnActive : ''}`}
@@ -588,7 +609,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
             Action
           </button>
           <button
-            className={styles.toolBtn}
+            className={`${styles.toolBtn} ${styles.hideMobile}`}
             onClick={() => setShowTemplateEditor(true)}
             title="Edit templates"
           >
@@ -637,6 +658,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
             onChange={handleAttachFiles}
           />
         </div>
+        </div>{/* /composeTools */}
 
         {/* Link dialog */}
         {showLinkDialog && (
@@ -665,6 +687,16 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
         )}
 
         <div className={styles.textareaWrap}>
+          <button
+            className={`${styles.composeToggle} ${showComposeTools ? styles.composeToggleOpen : ''}`}
+            onClick={() => setShowComposeTools(v => !v)}
+            aria-label={showComposeTools ? 'Hide tools' : 'Show tools'}
+            type="button"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
           <div
             ref={textareaRef}
             contentEditable
@@ -672,6 +704,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate }) {
             className={`${styles.textarea} ${styles.textareaEditor} ${isNote ? styles.textareaNote : ''} ${isExpanded ? styles.textareaExpanded : ''}`}
             onInput={e => { setReplyText(e.currentTarget.innerText); setGrammarMatches([]); }}
             onKeyDown={handleKeyDown}
+            onFocus={() => { setTimeout(() => messagesEndRef.current?.scrollIntoView({ block: 'end' }), 250); }}
             data-placeholder={isNote ? 'Add an internal note — not sent to customer…' : 'Type your reply… (press / for templates, ⌘↵ to send)'}
             spellCheck={true}
           />

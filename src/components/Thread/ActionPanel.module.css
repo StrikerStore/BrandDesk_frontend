@@ -319,3 +319,25 @@
   text-align: right;
   border-top: 1px solid var(--border);
 }
+
+/* ============================================================
+   MOBILE — Neubrutalism per-thread action cards (<= 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+  .card { border: 2px solid var(--nb-ink); box-shadow: var(--nb-shadow-sm); border-radius: 14px; }
+  .typeBadge { border-width: 2px; font-weight: 700; }
+  .jerseyValue, .statusValue { font-size: 14px; }
+  .checkbox { width: 22px; height: 22px; border: 2px solid var(--nb-ink); }
+  .checkLabel { font-size: 14px; }
+  .checkRow { min-height: 40px; padding: 6px 0; }
+  .inlineInput { font-size: 16px; min-height: 40px; border: 2px solid var(--nb-ink); }
+  .inlineSave, .editBtn { min-height: 38px; }
+  .closeActionBtn {
+    min-height: 44px;
+    border: 2px solid var(--nb-ink);
+    border-radius: 10px;
+    font-weight: 800;
+    background: var(--nb-mint);
+    color: var(--nb-ink);
+  }
+}

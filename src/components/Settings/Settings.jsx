@@ -305,9 +305,9 @@ export default function Settings({ onClose, user }) {
               </div>
             )}
 
-            {/* Team management — admin only */}
+            {/* Team management — admin only (hidden on mobile) */}
             {user?.role === 'admin' && (
-              <div className={styles.section}>
+              <div className={`${styles.section} ${styles.teamSection}`}>
                 <div className={styles.sectionHeader}>
                   <div>
                     <div className={styles.sectionTitle}>Team</div>

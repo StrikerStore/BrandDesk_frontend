@@ -163,7 +163,7 @@ export default function Sidebar({
             <span className={styles.logoText}>BrandDesk</span>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button className={styles.iconBtn} onClick={onNewTicket} title="Raise ticket for customer">
+            <button className={`${styles.iconBtn} ${styles.hideMobile}`} onClick={onNewTicket} title="Raise ticket for customer">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4z"/>
@@ -176,14 +176,14 @@ export default function Sidebar({
                 <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
               </svg>
             </button>
-            <button className={styles.iconBtn} onClick={onActionsView} title="Actions tracker">
+            <button className={`${styles.iconBtn} ${styles.hideMobile}`} onClick={onActionsView} title="Actions tracker">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
                 <rect x="9" y="3" width="6" height="4" rx="1"/>
                 <path d="M9 12h6M9 16h4"/>
               </svg>
             </button>
-            <button className={styles.iconBtn} onClick={onAnalytics} title="Analytics">
+            <button className={`${styles.iconBtn} ${styles.hideMobile}`} onClick={onAnalytics} title="Analytics">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                 <line x1="18" y1="20" x2="18" y2="10"/>
                 <line x1="12" y1="20" x2="12" y2="4"/>
@@ -223,7 +223,7 @@ export default function Sidebar({
                     </button>
                   )}
                   {user?.role === 'admin' && (
-                    <a className={styles.userMenuItem}
+                    <a className={`${styles.userMenuItem} ${styles.hideMobile}`}
                       href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/auth/google`}
                       onClick={() => setShowUserMenu(false)}>
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8a19.79 19.79 0 01-3.07-8.67A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg>

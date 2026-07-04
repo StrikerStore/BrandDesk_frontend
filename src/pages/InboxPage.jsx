@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchBrands } from '../utils/api';
 import { useThreads } from '../hooks/useThreads.js';
+import { useIsMobile } from '../hooks/useIsMobile.js';
 import Sidebar from '../components/Sidebar/Sidebar.jsx';
 import ThreadPanel from '../components/Thread/ThreadPanel.jsx';
 import CustomerPanel from '../components/Customer/CustomerPanel.jsx';
 import Dashboard from '../components/Dashboard/Dashboard.jsx';
 import ActionsView from '../components/Actions/ActionsView.jsx';
 import NewTicketModal from '../components/NewTicket/NewTicketModal.jsx';
+import Settings from '../components/Settings/Settings.jsx';
+import BottomNav from '../components/Mobile/BottomNav.jsx';
 import styles from './InboxPage.module.css';
 
 const SIDEBAR_MIN = 220;
@@ -25,6 +28,11 @@ export default function InboxPage({ user, onLogout }) {
   const [showAnalytics, setShowAnalytics]       = useState(false);
   const [showActionsView, setShowActionsView]   = useState(false);
   const [showNewTicket, setShowNewTicket]       = useState(false);
+
+  // Mobile-only navigation state (ignored on desktop)
+  const isMobile = useIsMobile();
+  const [mobileTab, setMobileTab]               = useState('inbox');
+  const [showCustomerSheet, setShowCustomerSheet] = useState(false);
 
   const draggingRef = useRef(null);
   const startXRef   = useRef(0);
@@ -83,6 +91,120 @@ export default function InboxPage({ user, onLogout }) {
       setTimeout(() => removeThreadLocal(threadId), 800);
     }
   }, [updateThreadLocal, removeThreadLocal]);
+
+  // ─────────────────────────────────────────────────────────────
+  // MOBILE — stacked single-screen flow with a bottom tab bar.
+  // Desktop 3-column layout below is left completely untouched.
+  // ─────────────────────────────────────────────────────────────
+  if (isMobile) {
+    const inThread = mobileTab === 'inbox' && !!selectedThreadId;
+    const unreadCount = threads.filter(t => t.is_unread).length;
+
+    return (
+      <div className={styles.mobileRoot}>
+        {/* Inbox list (home) */}
+        {mobileTab === 'inbox' && !selectedThreadId && (
+          <Sidebar
+            threads={threads}
+            loading={loading}
+            loadingMore={loadingMore}
+            hasMore={hasMore}
+            syncing={syncing}
+            brands={brands}
+            filters={filters}
+            onFilterChange={setFilters}
+            selectedId={selectedThreadId}
+            onSelect={handleSelectThread}
+            onSync={sync}
+            onFullSync={fullSync}
+            onLoadMore={loadMore}
+            onAnalytics={() => setMobileTab('analytics')}
+            onActionsView={() => setMobileTab('actions')}
+            onNewTicket={() => setShowNewTicket(true)}
+            user={user}
+            onLogout={onLogout}
+          />
+        )}
+
+        {/* Thread view */}
+        {inThread && (
+          <>
+            <ThreadPanel
+              threadId={selectedThreadId}
+              brands={brands}
+              onThreadUpdate={handleThreadUpdate}
+              onBack={() => { setSelectedThreadId(null); setShowCustomerSheet(false); }}
+              onOpenCustomer={() => setShowCustomerSheet(true)}
+            />
+            {showCustomerSheet && (
+              <div className={styles.sheetOverlay} onClick={() => setShowCustomerSheet(false)}>
+                <div className={styles.sheet} onClick={e => e.stopPropagation()}>
+                  <div className={styles.sheetGrab} />
+                  <div className={styles.sheetBody}>
+                    <CustomerPanel threadId={selectedThreadId} />
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Actions tab */}
+        {mobileTab === 'actions' && (
+          <ActionsView
+            onClose={() => setMobileTab('inbox')}
+            sidebarWidth={0}
+            onSelectThread={(threadId) => {
+              setMobileTab('inbox');
+              handleSelectThread(threadId);
+            }}
+          />
+        )}
+
+        {/* Analytics tab */}
+        {mobileTab === 'analytics' && (
+          <Dashboard onClose={() => setMobileTab('inbox')} sidebarWidth={0} />
+        )}
+
+        {/* Settings tab */}
+        {mobileTab === 'settings' && (
+          <Settings user={user} onClose={() => setMobileTab('inbox')} />
+        )}
+
+        {/* FAB — new ticket (inbox home only) */}
+        {mobileTab === 'inbox' && !selectedThreadId && (
+          <button className={styles.fab} onClick={() => setShowNewTicket(true)} aria-label="New ticket">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+        )}
+
+        {/* New ticket modal */}
+        {showNewTicket && (
+          <NewTicketModal
+            brands={brands}
+            onClose={() => setShowNewTicket(false)}
+            onCreated={(thread) => {
+              setShowNewTicket(false);
+              setMobileTab('inbox');
+              setSelectedThreadId(thread.id);
+              reload();
+            }}
+          />
+        )}
+
+        {/* Bottom nav — hidden while reading a thread to maximize compose space */}
+        {!inThread && (
+          <BottomNav
+            active={mobileTab}
+            onChange={setMobileTab}
+            badges={{ inbox: unreadCount }}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={styles.root} style={{ gridTemplateColumns: `${sidebarW}px 1fr ${customerW}px` }}>

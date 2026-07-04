@@ -1160,3 +1160,283 @@
   cursor: pointer;
 }
 .aiUndoBtn:hover { color: var(--text-primary); border-color: var(--border-strong); }
+
+/* Mobile-only compose toggle — hidden on desktop */
+.composeToggle { display: none; }
+
+/* ============================================================
+   MOBILE — Neubrutalism thread view (<= 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+  .hideMobile { display: none !important; }
+
+  .root {
+    height: 100dvh;
+    border-right: none;
+  }
+
+  /* Header */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    padding: calc(10px + env(safe-area-inset-top)) 14px 12px;
+    border-bottom: 3px solid var(--nb-ink);
+    background: var(--surface);
+  }
+  .headerTop {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  /* Keep back + name/email on row 1; push the priority/status controls to their own row */
+  .headerCustomer { flex-basis: 0; }
+  .headerTop > div:last-child { flex-basis: 100%; justify-content: flex-start; }
+  .backBtn {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--nb-ink);
+    border-radius: 12px;
+    background: var(--nb-yellow);
+    color: var(--nb-ink);
+    box-shadow: var(--nb-shadow-sm);
+  }
+  .backBtn:active { transform: translate(1px, 1px); box-shadow: none; }
+  .headerName { font-size: 17px; font-weight: 800; }
+  .headerEmail { font-size: 12px; }
+  .customerBtn {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--nb-ink);
+    border-radius: 12px;
+    background: var(--nb-lav);
+    color: var(--nb-ink);
+    box-shadow: var(--nb-shadow-sm);
+  }
+  .customerBtn:active { transform: translate(1px, 1px); box-shadow: none; }
+
+  .prioritySelect, .statusSelect {
+    min-height: 40px;
+    border: 2px solid var(--nb-ink) !important;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 4px 12px;
+    box-shadow: var(--nb-shadow-sm);
+  }
+
+  /* Meta + tags — horizontal scroll strips */
+  .headerMeta, .tagsRow {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .headerMeta::-webkit-scrollbar, .tagsRow::-webkit-scrollbar { display: none; }
+  .headerMeta > *, .tagsRow > * { flex-shrink: 0; }
+  .brandBadge, .ticketIdBadge { border: 1.5px solid var(--nb-ink); font-weight: 700; }
+  .actionBadge { border: 2px solid var(--nb-ink); font-weight: 700; }
+  .tagChip { border: 1.5px solid var(--nb-ink); }
+  .addTagBtn { border: 1.5px dashed var(--nb-ink); color: var(--nb-ink); }
+
+  .actionsSection { max-height: 40vh; border-bottom: 3px solid var(--nb-ink); }
+
+  /* Messages */
+  .messages {
+    padding: 16px 14px;
+    gap: 14px;
+    overscroll-behavior: contain;
+    background: var(--bg);
+  }
+  .msgWrap { max-width: 88%; }
+  .bubble {
+    font-size: 15px;
+    line-height: 1.5;
+    border: 2px solid var(--nb-ink);
+    padding: 11px 14px;
+  }
+  .bubbleIn {
+    background: var(--surface);
+    color: var(--nb-ink);
+    box-shadow: var(--nb-shadow-sm);
+    border-radius: 16px 16px 16px 5px;
+  }
+  .bubbleOut {
+    background: var(--nb-sky);
+    color: var(--nb-ink);
+    box-shadow: -2px 2px 0 var(--nb-ink);
+    border-radius: 16px 16px 5px 16px;
+  }
+  .bubbleNote {
+    background: var(--nb-yellow-soft) !important;
+    color: var(--nb-ink) !important;
+    border: 2px dashed var(--nb-ink);
+  }
+  .structuredCard { border: 2px solid var(--nb-ink); box-shadow: var(--nb-shadow-sm); }
+  .structuredTag { border: 1.5px solid var(--nb-ink); }
+  .systemBubble { border: 2px solid var(--nb-ink); box-shadow: var(--nb-shadow-sm); }
+  .attachmentThumb { width: 44vw; height: 34vw; border: 2px solid var(--nb-ink); }
+  .lightboxClose { top: -44px; width: 44px; height: 44px; font-size: 24px; }
+
+  /* Reply area — pinned compose */
+  .replyArea {
+    border-top: 3px solid var(--nb-ink);
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    background: var(--surface);
+  }
+
+  /* Collapsible toolbar */
+  .composeTools {
+    display: none;
+    margin-bottom: 8px;
+  }
+  .composeToolsOpen {
+    display: block;
+    animation: nbSlideDown 0.15s ease;
+  }
+  .composeToolsOpen .toolbar,
+  .composeToolsOpen .formatBar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .composeToolsOpen .toolbar::-webkit-scrollbar,
+  .composeToolsOpen .formatBar::-webkit-scrollbar { display: none; }
+  .composeToolsOpen .toolBtn { flex-shrink: 0; border: 2px solid var(--nb-ink); font-weight: 700; min-height: 40px; }
+  .composeToolsOpen .fmtBtn { flex-shrink: 0; border: 2px solid var(--nb-ink); min-height: 40px; min-width: 40px; }
+  .replyingAs { display: none; }
+
+  @keyframes nbSlideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Editor row: [+ toggle] [editor] */
+  .textareaWrap {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  .composeToggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border: 2px solid var(--nb-ink);
+    border-radius: 12px;
+    background: var(--nb-mint);
+    color: var(--nb-ink);
+    box-shadow: var(--nb-shadow-sm);
+    transition: transform 0.12s ease;
+  }
+  .composeToggleOpen { transform: rotate(45deg); background: var(--nb-coral); }
+  .composeToggle:active { transform: translate(1px, 1px); box-shadow: none; }
+  .composeToggleOpen:active { transform: rotate(45deg) translate(1px, 1px); }
+
+  .textarea {
+    flex: 1;
+    min-height: 46px;
+    max-height: 32dvh;
+    border: 2px solid var(--nb-ink);
+    border-radius: 14px;
+    font-size: 16px;
+  }
+  .textarea:focus { box-shadow: var(--nb-shadow-sm); }
+  .textareaExpanded { max-height: 52dvh; }
+  .textareaNote { background: var(--nb-yellow-soft); border-color: var(--nb-ink); color: var(--nb-ink); }
+  .expandBtn { display: none; }
+
+  /* Bottom row */
+  .replyBottom {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .replyBottom > div {
+    order: 2;
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .replyBottom > div::-webkit-scrollbar { display: none; }
+  .aiBtn, .grammarBtn, .aiUndoBtn { flex-shrink: 0; border: 2px solid var(--nb-ink); font-weight: 700; min-height: 38px; }
+  .sendBtn {
+    order: 1;
+    width: 100%;
+    min-height: 50px;
+    font-size: 15px;
+    font-weight: 800;
+    border: 3px solid var(--nb-ink);
+    border-radius: 14px;
+    background: var(--nb-sky);
+    color: var(--nb-ink);
+    box-shadow: var(--nb-shadow);
+  }
+  .sendBtn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: var(--nb-shadow-sm); }
+  .sendBtnNote { background: var(--nb-yellow); }
+
+  /* Template picker — bottom sheet */
+  .tplPicker {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    max-height: 72dvh;
+    border: 3px solid var(--nb-ink);
+    border-bottom: none;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -6px 0 var(--nb-ink);
+    z-index: 700;
+  }
+  .tplSearchInput { font-size: 16px; }
+  .tplItem { padding: 14px; min-height: 52px; }
+  .tplClose { font-size: 16px; padding: 6px 10px; }
+
+  /* Grammar panel */
+  .grammarPanel {
+    border: 2px solid var(--nb-ink);
+    max-height: 40dvh;
+    overflow-y: auto;
+  }
+  .grammarApply, .grammarIgnore { min-height: 34px; }
+
+  /* Resolve modal — bottom sheet */
+  .resolveOverlay {
+    position: fixed;
+    align-items: flex-end;
+    z-index: 700;
+  }
+  .resolveModal {
+    width: 100%;
+    max-width: 100%;
+    border: 3px solid var(--nb-ink);
+    border-bottom: none;
+    border-radius: 22px 22px 0 0;
+    box-shadow: 0 -6px 0 var(--nb-ink);
+  }
+  .resolveInput, .resolveTextarea { min-height: 48px; border: 2px solid var(--nb-ink); }
+  .resolveConfirmBtn, .resolveCancelBtn { min-height: 48px; border: 2px solid var(--nb-ink); font-weight: 800; }
+  .resolveConfirmBtn { background: var(--nb-mint); color: var(--nb-ink); }
+
+  /* Link dialog */
+  .linkDialogInput { font-size: 16px; min-height: 40px; }
+  .linkDialogOk, .linkDialogCancel { min-height: 40px; }
+
+  /* Action tool button keeps its warm tint but gains ink border via composeToolsOpen rule */
+  .toolBtnAction { border-color: var(--nb-ink); }
+}

@@ -349,3 +349,57 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+/* ============================================================
+   MOBILE — Neubrutalism customer sheet (<= 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+  .root { height: 100%; background: var(--surface); }
+
+  .panelHeader {
+    padding: 6px 18px 12px;
+    font-size: 13px;
+    font-weight: 800;
+    border-bottom: 2px solid var(--nb-ink);
+  }
+  .body { padding: 16px 18px calc(24px + env(safe-area-inset-bottom)); gap: 18px; }
+
+  .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    border: 2px solid var(--nb-ink);
+    font-size: 15px;
+    font-weight: 800;
+  }
+  .customerName { font-size: 16px; font-weight: 800; }
+
+  .sectionTitle {
+    font-size: 11px;
+    font-weight: 800;
+    border-bottom: 2px solid var(--nb-ink);
+    padding-bottom: 6px;
+  }
+
+  .statCard, .ticketCard, .orderCard, .notFound {
+    border: 2px solid var(--nb-ink);
+    box-shadow: var(--nb-shadow-sm);
+  }
+  .statVal { font-size: 20px; font-weight: 800; }
+  .ptTag { border: 1.5px solid var(--nb-ink); }
+
+  .notesArea, .addInput {
+    border: 2px solid var(--nb-ink);
+    border-radius: 12px;
+    font-size: 16px;
+  }
+  .saveNotesBtn, .addBtn, .saveAddBtn, .cancelBtn {
+    min-height: 46px;
+    border: 2px solid var(--nb-ink);
+    border-radius: 12px;
+    font-weight: 800;
+  }
+  .saveNotesBtn { background: var(--nb-mint); color: var(--nb-ink); }
+  .pastTicket { padding: 12px 0; }
+  .ptSubject { font-size: 14px; }
+}

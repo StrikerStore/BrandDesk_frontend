@@ -658,3 +658,204 @@
   cursor: pointer;
 }
 .userMenuItemDanger:hover { background: #fef2f2; }
+
+/* ============================================================
+   MOBILE — Neubrutalism inbox (home screen) (<= 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+  .hideMobile { display: none !important; }
+
+  .root {
+    height: 100dvh;
+    border-right: none;
+    background: var(--bg);
+  }
+
+  /* Header — sticky */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--surface);
+    padding: calc(12px + env(safe-area-inset-top)) 16px 0;
+    border-bottom: 3px solid var(--nb-ink);
+  }
+  .headerTop { margin-bottom: 12px; }
+  .logoText { font-size: 20px; font-weight: 800; letter-spacing: -0.4px; }
+
+  .iconBtn {
+    width: 42px;
+    height: 42px;
+    border: 2px solid var(--nb-ink);
+    border-radius: 12px;
+    background: var(--nb-sky);
+    color: var(--nb-ink);
+    box-shadow: var(--nb-shadow-sm);
+  }
+  .iconBtn:active { transform: translate(1px, 1px); box-shadow: none; }
+  .iconBtn:nth-child(2) { background: var(--nb-mint); }
+
+  .inboxMeta { border-bottom: none; padding-bottom: 12px; }
+  .inboxLabel { font-size: 15px; font-weight: 800; color: var(--nb-ink); }
+  .unreadBadge, .urgentBadge {
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 9px;
+    border: 1.5px solid var(--nb-ink);
+    border-radius: 99px;
+  }
+  .unreadBadge { background: var(--nb-sky); color: var(--nb-ink); }
+  .urgentBadge { background: var(--nb-coral); color: var(--nb-ink); }
+
+  /* Search */
+  .searchWrap {
+    margin: 12px 16px 0;
+    padding: 0 12px;
+    height: 46px;
+    border: 2px solid var(--nb-ink);
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: var(--nb-shadow-sm);
+  }
+  .searchInput { font-size: 16px; }
+  .searchBtn {
+    border: 2px solid var(--nb-ink);
+    border-radius: 10px;
+    font-weight: 800;
+    padding: 5px 12px;
+    background: var(--nb-yellow);
+    color: var(--nb-ink);
+  }
+  .searchBtnActive { background: var(--nb-lav); color: var(--nb-ink); border-color: var(--nb-ink); }
+
+  /* Saved views — horizontal scroll */
+  .savedViews { border-bottom: none; padding: 10px 16px 2px; }
+  .savedViewsRow {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .savedViewsRow::-webkit-scrollbar { display: none; }
+  .viewPill {
+    flex-shrink: 0;
+    height: 36px;
+    border: 2px solid var(--nb-ink);
+    font-weight: 700;
+  }
+  .viewPillActive { background: var(--nb-lav); color: var(--nb-ink); box-shadow: var(--nb-shadow-sm); }
+  .viewPillDelete { color: var(--nb-ink); font-size: 11px; }
+  .addViewBtn {
+    flex-shrink: 0;
+    height: 36px;
+    border: 2px dashed var(--nb-ink);
+    color: var(--nb-ink);
+    font-weight: 700;
+  }
+
+  /* Brand pills — horizontal scroll */
+  .filterSection { padding: 12px 16px 0; }
+  .pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+  .pills::-webkit-scrollbar { display: none; }
+  .pill {
+    flex-shrink: 0;
+    height: 34px;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 0 14px;
+    border: 2px solid var(--nb-ink);
+    color: var(--nb-ink);
+    background: var(--surface);
+  }
+  .pillActive { background: var(--nb-ink); color: #fff; box-shadow: var(--nb-shadow-sm); }
+  .pillBrandActive { box-shadow: var(--nb-shadow-sm); }
+
+  /* Status tabs — segmented */
+  .statusTabs {
+    gap: 6px;
+    padding: 12px 16px;
+    border-bottom: 3px solid var(--nb-ink);
+    background: var(--surface);
+  }
+  .statusTab {
+    padding: 9px 4px;
+    font-size: 12.5px;
+    font-weight: 800;
+    color: var(--nb-ink);
+    border: 2px solid var(--nb-ink);
+    border-radius: 12px;
+    background: var(--surface);
+    min-height: 42px;
+  }
+  .statusTabActive {
+    background: var(--nb-peach);
+    border-color: var(--nb-ink);
+    box-shadow: var(--nb-shadow-sm);
+  }
+  .statusTab:nth-child(2).statusTabActive { background: var(--nb-sky); }
+  .statusTab:nth-child(3).statusTabActive { background: var(--nb-mint); }
+  .statusTab:nth-child(4).statusTabActive { background: var(--nb-lav); }
+  .tabCount {
+    border: 1.5px solid var(--nb-ink);
+    background: var(--surface);
+    color: var(--nb-ink);
+    font-weight: 800;
+  }
+  .tabCountActive { background: var(--nb-ink); color: #fff; }
+
+  /* Thread list */
+  .list {
+    margin-right: 0;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
+    background: var(--bg);
+  }
+  .threadRow {
+    gap: 12px;
+    padding: 14px 16px;
+    min-height: 78px;
+    border-bottom: 2px solid rgba(26, 26, 26, 0.12);
+    align-items: center;
+  }
+  .threadRow:active { background: var(--nb-yellow-soft); }
+  .threadRow:hover { background: transparent; }
+
+  .avatar {
+    width: 44px;
+    height: 44px;
+    border: 2px solid var(--nb-ink);
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 800;
+  }
+  .threadName { font-size: 15px; font-weight: 700; max-width: 180px; }
+  .threadTime { font-size: 11px; }
+  .threadSubject { font-size: 13px; }
+  .brandTag {
+    font-size: 10.5px;
+    font-weight: 700;
+    border: 1.5px solid var(--nb-ink);
+  }
+  .tagPill { border: 1.5px solid rgba(26, 26, 26, 0.3); font-weight: 600; }
+  .unreadDot {
+    width: 10px;
+    height: 10px;
+    border: 1.5px solid var(--nb-ink);
+    background: var(--nb-sky);
+  }
+
+  /* User menu — neubrutalist card */
+  .userMenu {
+    border: 3px solid var(--nb-ink);
+    box-shadow: var(--nb-shadow);
+    border-radius: 16px;
+  }
+  .userMenuItem, .userMenuItemDanger { padding: 12px; font-size: 15px; min-height: 44px; }
+}
