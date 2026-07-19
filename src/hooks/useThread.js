@@ -17,7 +17,13 @@ export function useThread(threadId) {
     try {
       const { data } = await fetchThread(threadId);
       setThread(data.thread);
-      setMessages(data.messages || []);
+      setMessages(prev => {
+        const next = data.messages || [];
+        // Keep the same array reference when nothing changed so polls
+        // don't retrigger effects (e.g. auto-scroll) in consumers
+        const unchanged = prev.length === next.length && next.every((m, i) => m.id === prev[i]?.id);
+        return unchanged ? prev : next;
+      });
       setError(null);
     } catch (err) {
       // Don't overwrite error on silent poll failures
