@@ -85,6 +85,12 @@ export default function InboxPage({ user, onLogout }) {
     updateThreadLocal(id, { is_unread: 0 });
   };
 
+  // Undoing a manual ticket's first email deletes the ticket with it.
+  const handleThreadDeleted = useCallback(() => {
+    setSelectedThreadId(null);
+    reload();
+  }, [reload]);
+
   const handleThreadUpdate = useCallback((threadId, updates) => {
     updateThreadLocal(threadId, updates);
     if (updates.snoozed_until) {
@@ -135,6 +141,7 @@ export default function InboxPage({ user, onLogout }) {
               onThreadUpdate={handleThreadUpdate}
               onBack={() => { setSelectedThreadId(null); setShowCustomerSheet(false); }}
               onOpenCustomer={() => setShowCustomerSheet(true)}
+              onThreadDeleted={handleThreadDeleted}
             />
             {showCustomerSheet && (
               <div className={styles.sheetOverlay} onClick={() => setShowCustomerSheet(false)}>
@@ -241,6 +248,7 @@ export default function InboxPage({ user, onLogout }) {
             threadId={selectedThreadId}
             brands={brands}
             onThreadUpdate={handleThreadUpdate}
+            onThreadDeleted={handleThreadDeleted}
           />
           <div className={styles.handle} onMouseDown={(e) => startDrag('customer', e, customerW)} />
         </div>

@@ -25,6 +25,11 @@ export const createManualThread = (data)      => api.post('/api/threads/manual',
 export const fullSyncThreads  = ()            => api.post('/api/sync?full=true');
 export const fetchStats       = ()            => api.get('/api/threads/stats/overview');
 
+// Pending sends (recall / undo window)
+export const cancelPendingSend  = (id) => api.post(`/api/sends/${id}/cancel`);
+export const retryPendingSend   = (id) => api.post(`/api/sends/${id}/retry`);
+export const discardPendingSend = (id) => api.delete(`/api/sends/${id}`);
+
 // Customers
 export const fetchCustomer       = (email)        => api.get(`/api/customers/${encodeURIComponent(email)}`);
 export const updateCustomerNotes = (email, notes) => api.patch(`/api/customers/${encodeURIComponent(email)}/notes`, { notes });

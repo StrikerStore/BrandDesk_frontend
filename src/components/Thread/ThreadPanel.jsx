@@ -7,8 +7,11 @@ import ActionModal from './ActionModal.jsx';
 import ActionPanel from './ActionPanel.jsx';
 import styles from './ThreadPanel.module.css';
 
-export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, onOpenCustomer }) {
-  const { thread, messages, loading, sending, reply, patchStatus, setThread, reload } = useThread(threadId);
+export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, onOpenCustomer, onThreadDeleted }) {
+  const {
+    thread, messages, pending, loading, sending, reply, patchStatus, setThread, reload,
+    undoSend, retrySend, discardSend,
+  } = useThread(threadId);
 
   const [replyText, setReplyText]           = useState('');
   const [isNote, setIsNote]                 = useState(false);
@@ -326,6 +329,33 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
     }
   };
 
+  // ── Recall window ───────────────────────────────────────────
+  const queuedPending = pending.filter(p => p.status === 'queued');
+  const manualPending = queuedPending.find(p => p.kind === 'manual');
+  const hasQueued     = queuedPending.length > 0;
+
+  // Drives the countdown. Only runs while something is actually queued.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!hasQueued) return;
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [hasQueued]);
+
+  const handleUndoSend = async (pendingSendId) => {
+    const res = await undoSend(pendingSendId);
+    if (!res.ok) return;
+    if (res.kind === 'manual') {
+      // The ticket only existed because of that first email — it's gone now.
+      onThreadDeleted?.(threadId);
+      return;
+    }
+    // Put the recalled text back so the agent can fix and re-send.
+    setEditorContent(res.body || '');
+    textareaRef.current?.focus();
+  };
+
   const handleUseTemplate = async (tpl) => {
     const firstName = thread?.customer_name?.split(' ')[0] || 'there';
 
@@ -561,6 +591,22 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
         </div>
       )}
 
+      {/* Ticket itself is still in its recall window — no Gmail thread to reply into yet */}
+      {manualPending && (
+        <div className={styles.recallBanner}>
+          <span>
+            Ticket email sends in <strong>{formatCountdown(manualPending.scheduled_for, now)}</strong>
+          </span>
+          <button
+            className={styles.recallBannerUndo}
+            onClick={() => handleUndoSend(manualPending.id)}
+            type="button"
+          >
+            Undo &amp; delete ticket
+          </button>
+        </div>
+      )}
+
       {/* Messages */}
       <div className={styles.messagesWrap}>
       <div className={styles.messages} ref={messagesBoxRef} onScroll={handleMessagesScroll}>
@@ -578,7 +624,15 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
                   <span className={styles.dateSepChip}>{formatDayLabel(msg.sent_at)}</span>
                 </div>
               )}
-              <MessageBubble message={msg} thread={thread} grouped={grouped} />
+              <MessageBubble
+                message={msg}
+                thread={thread}
+                grouped={grouped}
+                now={now}
+                onUndoSend={handleUndoSend}
+                onRetrySend={retrySend}
+                onDiscardSend={discardSend}
+              />
             </Fragment>
           );
         })}
@@ -811,8 +865,9 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
             <button
               className={`${styles.mobileSend} ${isNote ? styles.mobileSendNote : ''}`}
               onClick={handleSend}
-              disabled={!replyText.trim() || sending}
+              disabled={!replyText.trim() || sending || !!manualPending}
               aria-label={isNote ? 'Save note' : 'Send reply'}
+              title={manualPending ? 'Waiting for the ticket email to send' : undefined}
               type="button"
             >
               {sending
@@ -935,7 +990,8 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
           <button
             className={`${styles.sendBtn} ${isNote ? styles.sendBtnNote : ''}`}
             onClick={handleSend}
-            disabled={!replyText.trim() || sending}
+            disabled={!replyText.trim() || sending || !!manualPending}
+            title={manualPending ? 'Waiting for the ticket email to send' : undefined}
           >
             {sending ? 'Sending…' : isNote ? 'Save note' : 'Send reply'}
           </button>
@@ -1003,10 +1059,19 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
   );
 }
 
-function MessageBubble({ message, thread, grouped }) {
+// Seconds left in a recall window, as m:ss. Clamped at zero — once it hits
+// zero the email is in Gmail's hands.
+function formatCountdown(scheduledFor, now) {
+  const ms = new Date(scheduledFor).getTime() - now;
+  const secs = Math.max(Math.ceil(ms / 1000), 0);
+  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+}
+
+function MessageBubble({ message, thread, grouped, now, onUndoSend, onRetrySend, onDiscardSend }) {
   const isOutbound = message.direction === 'outbound';
   const isNote     = !!message.is_note;
   const isSystem   = message.from_email === 'system';
+  const pending    = message._pending;
 
   // System message — resolution event
   if (isSystem) {
@@ -1037,7 +1102,7 @@ function MessageBubble({ message, thread, grouped }) {
 
   return (
     <div className={`${styles.msgWrap} ${isOutbound ? styles.msgOutbound : styles.msgInbound} ${grouped ? styles.msgGrouped : ''}`}>
-      <div className={`${styles.bubble} ${isOutbound ? styles.bubbleOut : styles.bubbleIn} ${isNote ? styles.bubbleNote : ''}`}>
+      <div className={`${styles.bubble} ${isOutbound ? styles.bubbleOut : styles.bubbleIn} ${isNote ? styles.bubbleNote : ''} ${pending && pending.status !== 'failed' ? styles.bubblePending : ''} ${pending?.status === 'failed' ? styles.bubbleFailed : ''}`}>
         {message.body && (
           isOutbound
             ? <p className={styles.bubbleText} dangerouslySetInnerHTML={{ __html: message.body }} />
@@ -1063,14 +1128,46 @@ function MessageBubble({ message, thread, grouped }) {
             ))}
           </div>
         )}
+        {pending?.attachment_count > 0 && (
+          <div className={styles.sentAttachList}>
+            <div className={styles.sentAttachItem}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+              </svg>
+              <span>{pending.attachment_count} attachment{pending.attachment_count > 1 ? 's' : ''}</span>
+            </div>
+          </div>
+        )}
         {/* Mobile-only WhatsApp-style timestamp inside the bubble */}
-        <span className={styles.bubbleTimeIn}>{isNote ? 'Note · ' : ''}{formatClock(message.sent_at)}</span>
+        {!pending && <span className={styles.bubbleTimeIn}>{isNote ? 'Note · ' : ''}{formatClock(message.sent_at)}</span>}
       </div>
-      <div className={styles.bubbleMeta}>
-        {isNote && <span className={styles.noteTag}>Internal note</span>}
-        <span className={styles.bubbleTime}>{formatFullTime(message.sent_at)}</span>
-        {isOutbound && !isNote && <span className={styles.bubbleTime}>· You</span>}
-      </div>
+
+      {pending ? (
+        <div className={styles.bubbleMeta}>
+          {pending.status === 'failed' ? (
+            <>
+              <span className={styles.recallFailed}>⚠ Not sent — {pending.error || 'send failed'}</span>
+              <button className={styles.recallAction} onClick={() => onRetrySend?.(pending.id)} type="button">Retry</button>
+              <button className={styles.recallAction} onClick={() => onDiscardSend?.(pending.id)} type="button">Discard</button>
+            </>
+          ) : pending.status === 'sending' ? (
+            <span className={styles.bubbleTime}>Sending…</span>
+          ) : (
+            <>
+              <span className={styles.bubbleTime}>
+                Sending in {formatCountdown(pending.scheduled_for, now)}
+              </span>
+              <button className={styles.recallAction} onClick={() => onUndoSend?.(pending.id)} type="button">Undo</button>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className={styles.bubbleMeta}>
+          {isNote && <span className={styles.noteTag}>Internal note</span>}
+          <span className={styles.bubbleTime}>{formatFullTime(message.sent_at)}</span>
+          {isOutbound && !isNote && <span className={styles.bubbleTime}>· You</span>}
+        </div>
+      )}
     </div>
   );
 }

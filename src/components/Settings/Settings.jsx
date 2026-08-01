@@ -85,6 +85,9 @@ export default function Settings({ onClose, user }) {
       setSettings(data);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      // Saving is admin-only; without this a non-admin got a silent no-op.
+      setTestResult({ ok: false, msg: err.response?.data?.error || 'Failed to save settings' });
     } finally {
       setSaving(false);
     }
@@ -260,6 +263,39 @@ export default function Settings({ onClose, user }) {
                   </button>
                 </div>
               )}
+            </div>
+
+            {/* Recall window */}
+            <div className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <div>
+                  <div className={styles.sectionTitle}>Recall window (undo send)</div>
+                  <div className={styles.sectionDesc}>
+                    Hold outgoing customer emails for a few seconds before they actually leave,
+                    so an agent can pull a reply back. Applies to replies and new tickets.
+                  </div>
+                </div>
+              </div>
+              <div className={styles.subSettings}>
+                <div className={styles.fieldRow}>
+                  <label className={styles.fieldLabel}>Hold for</label>
+                  <div className={styles.fieldInput}>
+                    <input
+                      type="number"
+                      min="0"
+                      max="120"
+                      className={styles.numInput}
+                      value={settings?.recall_window_seconds ?? 30}
+                      onChange={e => set('recall_window_seconds', e.target.value)}
+                    />
+                    <span className={styles.fieldUnit}>seconds before the email actually sends</span>
+                  </div>
+                </div>
+                <div className={styles.fieldNote}>
+                  Set to <code>0</code> to send immediately and disable undo. Internal notes are never
+                  delayed. Customers wait this long for every reply, so keep it short.
+                </div>
+              </div>
             </div>
 
             {/* SLA target */}
