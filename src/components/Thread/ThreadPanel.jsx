@@ -1213,9 +1213,11 @@ function MessageImage({ attachment }) {
 
 // Renders the parsed Shopify ticket form as a clean structured card
 function StructuredMessage({ message, thread, grouped }) {
-  // Split at blank line to separate metadata from actual message
+  // Split at blank line to separate metadata from actual message.
+  // `└` catches the indented sub-issue continuation line buildChatBody emits —
+  // without it the sub-issue is neither a tag nor part of the body, and vanishes.
   const lines = message.body.split('\n');
-  const metaLines = lines.filter(l => l.match(/^[🎫📦🏷📞🌍]/));
+  const metaLines = lines.filter(l => l.match(/^\s*[🎫📦🏷📞🌍└]/)).map(l => l.trim());
   const bodyStart = lines.findIndex(l => l === '');
   const customerMsg = bodyStart >= 0 ? lines.slice(bodyStart + 1).join('\n').trim() : '';
 
