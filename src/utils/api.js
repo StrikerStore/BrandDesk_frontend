@@ -45,15 +45,23 @@ export const trackTemplateUse = (id)          => api.post(`/api/templates/${id}/
 // Brands
 export const fetchBrands = () => api.get('/api/brands');
 
-// Analytics — all range-aware endpoints accept days (1 = today)
-export const fetchAnalyticsOverview   = (days=30) => api.get('/api/analytics/overview',      { params: { days } });
-export const fetchAnalyticsVolume     = (days=30) => api.get('/api/analytics/volume',        { params: { days } });
-export const fetchAnalyticsByBrand    = (days=30) => api.get('/api/analytics/by-brand',      { params: { days } });
-export const fetchAnalyticsByIssue    = (days=30) => api.get('/api/analytics/by-issue',      { params: { days } });
-export const fetchAnalyticsResponse   = (days=30) => api.get('/api/analytics/response-time', { params: { days } });
-export const fetchAnalyticsResolvedBy = (days=30) => api.get('/api/analytics/resolved-by',   { params: { days } });
-export const fetchAnalyticsSla        = ()        => api.get('/api/analytics/sla');
-export const fetchAnalyticsTemplates  = ()        => api.get('/api/analytics/templates');
+// Analytics — every endpoint takes the same filter object:
+//   { days }  (1 = today)  OR  { from, to }  ISO dates, plus optional brand / agent.
+// The server pins `agent` to the caller for non-admins, so it's a display
+// preference here, not an access control.
+export const fetchAnalyticsOverview  = (p={}) => api.get('/api/analytics/overview',      { params: p });
+export const fetchAnalyticsVolume    = (p={}) => api.get('/api/analytics/volume',        { params: p });
+export const fetchAnalyticsByBrand   = (p={}) => api.get('/api/analytics/by-brand',      { params: p });
+export const fetchAnalyticsByIssue   = (p={}) => api.get('/api/analytics/by-issue',      { params: p });
+export const fetchAnalyticsResponse  = (p={}) => api.get('/api/analytics/response-time', { params: p });
+export const fetchAnalyticsSla       = (p={}) => api.get('/api/analytics/sla',           { params: p });
+export const fetchAnalyticsActions   = (p={}) => api.get('/api/analytics/actions',       { params: p });
+export const fetchAnalyticsAgents    = (p={}) => api.get('/api/analytics/agents',        { params: p });
+export const fetchAnalyticsTemplates = ()     => api.get('/api/analytics/templates');
+
+// Admin only — streams a multi-sheet .xlsx
+export const downloadAnalyticsExport = (p={}) =>
+  api.get('/api/analytics/export', { params: p, responseType: 'blob' });
 
 // Saved views
 export const fetchViews = ()       => api.get('/api/views');

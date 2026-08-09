@@ -170,7 +170,7 @@ export default function InboxPage({ user, onLogout }) {
 
         {/* Analytics tab */}
         {mobileTab === 'analytics' && (
-          <Dashboard onClose={() => setMobileTab('inbox')} sidebarWidth={0} />
+          <Dashboard onClose={() => setMobileTab('inbox')} sidebarWidth={0} user={user} brands={brands} />
         )}
 
         {/* Settings tab */}
@@ -267,6 +267,8 @@ export default function InboxPage({ user, onLogout }) {
         <Dashboard
           onClose={() => setShowAnalytics(false)}
           sidebarWidth={sidebarW}
+          user={user}
+          brands={brands}
         />
       )}
 
