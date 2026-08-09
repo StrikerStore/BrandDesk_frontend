@@ -100,7 +100,7 @@ export default function NewTicketModal({ brands, onClose, onCreated }) {
             <label className={styles.label}>Order number <span className={styles.req}>*</span></label>
             <input
               className={styles.input}
-              placeholder="e.g., #1234"
+              placeholder="e.g., DS4334"
               value={form.order_number}
               onChange={set('order_number')}
               required

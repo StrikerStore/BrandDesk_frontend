@@ -71,7 +71,10 @@ export const createView = (data)   => api.post('/api/views', data);
 export const deleteView = (id)     => api.delete(`/api/views/${id}`);
 
 // Orders (external DB)
-export const fetchOrder         = (orderId) => api.get(`/api/orders/${encodeURIComponent(orderId)}`);
+// email is optional — it lets the server match a bare number like "4334"
+// against this customer's own orders before falling back to a wider search
+export const fetchOrder         = (orderId, email) =>
+  api.get(`/api/orders/${encodeURIComponent(orderId)}`, { params: email ? { email } : {} });
 export const fetchOrdersByEmail = (email)   => api.get(`/api/orders/customer/${encodeURIComponent(email)}`);
 
 // Thread Actions (per-thread)

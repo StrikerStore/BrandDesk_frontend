@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchAllActions, updateAction, closeAction } from '../../utils/api.js';
-import { getBrandColor } from '../../utils/helpers.js';
+import { getBrandColor, displayOrderId } from '../../utils/helpers.js';
 import styles from './ActionsView.module.css';
 
 const TYPE_LABELS = {
@@ -213,7 +213,7 @@ function ActionRow({ action, onFieldUpdate, onClose, onSelectThread }) {
         >
           <span className={styles.ticketName}>{displayName}</span>
           {action.ticket_id && <span className={styles.ticketId}>{action.ticket_id}</span>}
-          {action.order_number && <span className={styles.orderNum}>#{action.order_number}</span>}
+          {action.order_number && <span className={styles.orderNum}>#{displayOrderId(action.order_number)}</span>}
           <span className={styles.brandTag} style={{ background: brandColor.bg, color: brandColor.text }}>
             {action.brand}
           </span>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchCustomer, updateCustomerNotes, createCustomer, fetchThread } from '../../utils/api.js';
-import { getInitials, getBrandColor } from '../../utils/helpers.js';
+import { getInitials, getBrandColor, displayOrderId } from '../../utils/helpers.js';
 import OrderPanel from '../Order/OrderPanel.jsx';
 import styles from './CustomerPanel.module.css';
 
@@ -214,7 +214,7 @@ export default function CustomerPanel({ threadId }) {
                   {(t.ticket_id || t.order_number) && (
                     <div className={styles.ptMeta}>
                       {t.ticket_id && <span className={styles.ptTag}>{t.ticket_id}</span>}
-                      {t.order_number && <span className={styles.ptTag}>#{t.order_number}</span>}
+                      {t.order_number && <span className={styles.ptTag}>#{displayOrderId(t.order_id_resolved || t.order_number)}</span>}
                       {t.issue_category && <span className={styles.ptIssue}>{t.issue_category}</span>}
                     </div>
                   )}

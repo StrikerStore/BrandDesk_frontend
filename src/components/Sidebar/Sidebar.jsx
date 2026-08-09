@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { logoutUser, fetchViews, createView, deleteView, fetchStats } from '../../utils/api';
-import { formatTime, getBrandColor, STATUS_CONFIG, truncate, getInitials } from '../../utils/helpers.js';
+import { formatTime, getBrandColor, STATUS_CONFIG, truncate, getInitials, displayOrderId } from '../../utils/helpers.js';
 import Settings from '../Settings/Settings.jsx';
 import styles from './Sidebar.module.css';
 import logo from '../../assets/logo.png';
@@ -480,7 +480,7 @@ function ThreadRow({ thread, selected, onSelect }) {
           </div>
         </div>
         {thread.ticket_id ? (
-          <div className={styles.threadSubject}>{thread.ticket_id}{thread.order_number ? ` · #${thread.order_number}` : ''}</div>
+          <div className={styles.threadSubject}>{thread.ticket_id}{thread.order_number ? ` · #${displayOrderId(thread.order_id_resolved || thread.order_number)}` : ''}</div>
         ) : (
           <div className={styles.threadSubject}>{truncate(thread.subject, 46)}</div>
         )}

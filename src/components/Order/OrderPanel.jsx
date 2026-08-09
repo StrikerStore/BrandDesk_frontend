@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { fetchOrder, fetchOrdersByEmail } from '../../utils/api.js';
+import { fetchOrder, fetchOrdersByEmail, updateThread } from '../../utils/api.js';
+import { displayOrderId } from '../../utils/helpers.js';
 import styles from './OrderPanel.module.css';
 
 // Mask phone: keep only last 4 digits → ••••••4321
@@ -24,8 +25,12 @@ function formatPayment(type) {
 }
 
 export default function OrderPanel({ thread }) {
-  const orderId = thread?.order_number;
-  const email   = thread?.customer_email;
+  // Prefer the canonical id once we've resolved it; order_number stays as the
+  // customer typed it
+  const rawOrder = thread?.order_number;
+  const orderId  = thread?.order_id_resolved || rawOrder;
+  const email    = thread?.customer_email;
+  const threadId = thread?.id;
 
   const [orderData, setOrderData]     = useState(null);
   const [pastOrders, setPastOrders]   = useState([]);
@@ -33,18 +38,56 @@ export default function OrderPanel({ thread }) {
   const [loading, setLoading]         = useState(false);
   const [pastLoading, setPastLoading] = useState(false);
   const [error, setError]             = useState(null);
+  const [candidates, setCandidates]   = useState([]);
+  const [manualId, setManualId]       = useState('');
+  const [saving, setSaving]           = useState(false);
   const [expandedPast, setExpandedPast] = useState({}); // accordion state
 
+  // The id the panel is actually showing — starts as the ticket's, then follows
+  // whatever the server resolved or the agent picked
+  const [activeId, setActiveId] = useState(orderId);
+  useEffect(() => { setActiveId(orderId); }, [orderId]);
+
+  // Persist a resolution so later loads hit the exact-match branch. Only ever
+  // called for the ticket's own order — never from the past-orders accordion,
+  // whose ids are already canonical.
+  const persistResolved = async (resolved) => {
+    if (!threadId || !resolved || resolved === thread?.order_id_resolved) return;
+    try { await updateThread(threadId, { order_id_resolved: resolved }); } catch {}
+  };
+
   useEffect(() => {
-    if (!orderId) { setOrderData(null); setError(null); return; }
+    if (!activeId) { setOrderData(null); setError(null); setCandidates([]); return; }
+    let cancelled = false;
     setLoading(true);
     setError(null);
+    setCandidates([]);
     setOrderData(null);
-    fetchOrder(orderId)
-      .then(({ data }) => setOrderData(data))
-      .catch(err => setError(err.response?.data?.error || 'Failed to load order'))
-      .finally(() => setLoading(false));
-  }, [orderId]);
+    fetchOrder(activeId, email)
+      .then(({ data }) => {
+        if (cancelled) return;
+        setOrderData(data);
+        if (data.resolved_id) persistResolved(data.resolved_id);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        setError(err.response?.data?.error || 'Failed to load order');
+        setCandidates(err.response?.data?.candidates || []);
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeId, email]);
+
+  // Agent picked a candidate or typed a correction
+  const applyOrderId = async (chosen) => {
+    const clean = displayOrderId(chosen);
+    if (!clean) return;
+    setSaving(true);
+    await persistResolved(clean);
+    setSaving(false);
+    setManualId('');
+    setActiveId(clean);
+  };
 
   useEffect(() => {
     if (!email) return;
@@ -56,8 +99,9 @@ export default function OrderPanel({ thread }) {
   }, [email]);
 
   const togglePast = async (pastOrderId) => {
-    // Skip current order
-    if (pastOrderId === orderId) return;
+    // Skip the ticket's own order — compare canonical forms, since the ticket's
+    // raw value ("Order #DS4334") never equals the DB's "DS4334"
+    if (displayOrderId(pastOrderId) === displayOrderId(orderData?.resolved_id || activeId)) return;
 
     const isOpen = expandedPast[pastOrderId];
     setExpandedPast(p => ({ ...p, [pastOrderId]: !isOpen }));
@@ -81,7 +125,13 @@ export default function OrderPanel({ thread }) {
         <div className={styles.section}>
           <div className={styles.sectionTitle}>
             Order
-            <span className={styles.orderId}>{orderId}</span>
+            <span
+              className={styles.orderId}
+              title={rawOrder && displayOrderId(rawOrder) !== displayOrderId(orderData?.resolved_id || activeId)
+                ? `Customer wrote: ${rawOrder}` : undefined}
+            >
+              {displayOrderId(orderData?.resolved_id || activeId)}
+            </span>
             {orderData?.has_splits && (
               <span className={styles.splitBadge}>{orderData.split_count + 1} shipments</span>
             )}
@@ -89,13 +139,51 @@ export default function OrderPanel({ thread }) {
 
           {loading && <div className={styles.loading}><span className={styles.spinner} />Loading order…</div>}
 
-          {error && (
-            <div className={styles.errorBox}>
-              {error === 'Order not found' ? `Order ${orderId} not found in the database` : error}
+          {error && !loading && (
+            <div className={styles.notFoundBox}>
+              {/* No hardcoded "Order" prefix — the raw value often already
+                  contains the word, which is where "Order Order #DS4334" came from */}
+              <div className={styles.errorBox}>
+                {error === 'Order not found'
+                  ? <>No order matching <strong>“{rawOrder}”</strong> was found.</>
+                  : error}
+              </div>
+
+              {candidates.length > 0 && (
+                <div className={styles.candidates}>
+                  <div className={styles.candidatesLabel}>Did you mean?</div>
+                  {candidates.map(c => (
+                    <button key={c.order_id} className={styles.candidateRow}
+                      onClick={() => applyOrderId(c.order_id)} disabled={saving}>
+                      <span className={styles.candidateId}>{c.order_id}</span>
+                      <span className={styles.candidateMeta}>
+                        {formatDate(c.order_date)}
+                        {c.customer_name ? ` · ${c.customer_name}` : ''}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className={styles.manualFix}>
+                <input
+                  className={styles.manualInput}
+                  placeholder="Enter the correct order ID"
+                  value={manualId}
+                  onChange={e => setManualId(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') applyOrderId(manualId); }}
+                  disabled={saving}
+                />
+                <button className={styles.manualSave}
+                  onClick={() => applyOrderId(manualId)}
+                  disabled={saving || !manualId.trim()}>
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
             </div>
           )}
 
-          {orderData && <OrderLines orders={orderData.orders} baseId={orderId} />}
+          {orderData && <OrderLines orders={orderData.orders} baseId={orderData.resolved_id || activeId} />}
         </div>
       )}
 
@@ -115,7 +203,9 @@ export default function OrderPanel({ thread }) {
 
           {pastOrders.length > 0 && (
             <div className={styles.pastList}>
-              {pastOrders.filter(o => o.order_id !== orderId).map(o => {
+              {pastOrders
+                .filter(o => displayOrderId(o.order_id) !== displayOrderId(orderData?.resolved_id || activeId))
+                .map(o => {
                 const isOpen = expandedPast[o.order_id];
                 const detail = pastOrderDetails[o.order_id];
 

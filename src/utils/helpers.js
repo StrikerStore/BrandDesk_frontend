@@ -142,3 +142,18 @@ export function truncate(str, len = 60) {
   if (!str) return '';
   return str.length > len ? str.slice(0, len) + '…' : str;
 }
+
+// Order numbers arrive as free text — "DS4334", "#DS4334", "Order #DS4334".
+// Several places render `#{order_number}`, which doubles up to "##DS4334" when
+// the stored value already has one. Callers keep adding their own '#'; this
+// just guarantees the value doesn't already carry one.
+// Mirrors normalizeOrderInput in BrandDesk_backend/src/services/orderId.js.
+export function displayOrderId(raw) {
+  if (!raw) return '';
+  const cleaned = String(raw)
+    .replace(/^(?:order\s*(?:number|no\.?|id)?|ord\.?|#|:|-)\s*/i, '')
+    .replace(/^(?:order\s*(?:number|no\.?|id)?|ord\.?|#|:|-)\s*/i, '')
+    .replace(/[^A-Za-z0-9_]/g, '')
+    .toUpperCase();
+  return cleaned || String(raw).trim();
+}
