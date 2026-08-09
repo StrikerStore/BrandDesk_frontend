@@ -22,20 +22,49 @@ export function useThreads(filters = {}) {
   // Keep filtersRef in sync
   useEffect(() => { filtersRef.current = filters; }, [filtersKey]);
 
-  // Load first page (or refresh)
-  const load = useCallback(async (showLoader = false) => {
+  // Load first page (or refresh).
+  //
+  // merge = true  → refresh page 1 in place and KEEP everything already loaded
+  //                 from pages 2..N. Used by the background poll: replacing the
+  //                 array with just page 1 shrinks scrollHeight and the browser
+  //                 clamps the user's scrollTop, yanking the list back to top.
+  // merge = false → hard replace (filter change, sync, explicit reload) where
+  //                 resetting to the top is the expected behaviour.
+  const load = useCallback(async (showLoader = false, merge = false) => {
     if (showLoader) setLoading(true);
     try {
       const { data } = await fetchThreads({ ...filtersRef.current, page: 1, limit: PAGE_SIZE });
       const list = data.threads || [];
-      setThreads(list);
+
+      if (merge) {
+        setThreads(prev => {
+          const firstPageIds = new Set(list.map(t => t.id));
+          // Rows beyond page 1 keep their existing order; anything that moved up
+          // into page 1 is already in `list`, so no duplicates.
+          const tail = prev.filter(t => !firstPageIds.has(t.id));
+          const next = [...list, ...tail];
+          // Keep the same array reference when nothing changed so a quiet poll
+          // doesn't re-render every row (mirrors useThread.js)
+          const unchanged = prev.length === next.length && next.every((t, i) => {
+            const p = prev[i];
+            return p && t.id === p.id && t.updated_at === p.updated_at &&
+              t.is_unread === p.is_unread && t.message_count === p.message_count;
+          });
+          threadCountRef.current = unchanged ? prev.length : next.length;
+          return unchanged ? prev : next;
+        });
+      } else {
+        setThreads(list);
+        pageRef.current = 1;
+        threadCountRef.current = list.length;
+      }
+
       setTotal(data.total || 0);
       setError(null);
-      pageRef.current = 1;
       totalRef.current = data.total || 0;
-      threadCountRef.current = list.length;
     } catch (err) {
-      setError(err.response?.data?.error || err.message);
+      // Don't surface transient poll failures over a list that's still valid
+      if (!merge) setError(err.response?.data?.error || err.message);
     } finally {
       setLoading(false);
     }
@@ -136,9 +165,10 @@ export function useThreads(filters = {}) {
     totalRef.current = Math.max(0, totalRef.current - 1);
   }, []);
 
-  // Poll every 60s — reload first page (don't reset all loaded threads, just refresh page 1)
+  // Poll every 60s — refresh page 1 and merge it over the already-loaded pages
+  // so the list never shrinks under the user's scroll position
   useEffect(() => {
-    pollRef.current = setInterval(() => load(), 60000);
+    pollRef.current = setInterval(() => load(false, true), 60000);
     return () => clearInterval(pollRef.current);
   }, [load]);
 

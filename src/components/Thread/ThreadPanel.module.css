@@ -168,12 +168,16 @@
 .actionBadgeActive { border-color: var(--accent); }
 
 /* Inline actions panel expanded from the badge */
+/* Pure flex container — ActionPanel's .root is the single scroller inside it.
+   Two nested `overflow-y: auto` boxes meant the outer scrollbar never
+   activated and card controls fell below the cut line with no affordance. */
 .actionsSection {
   flex-shrink: 0;
   max-height: 45%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
   border-bottom: 1px solid var(--border);
   background: var(--surface-2);
 }
@@ -252,9 +256,9 @@
   gap: 16px;
 }
 
-.scrollTopBtn {
+.scrollTopBtn,
+.scrollBottomBtn {
   position: absolute;
-  top: 12px;
   right: 18px;
   width: 34px;
   height: 34px;
@@ -269,7 +273,11 @@
   box-shadow: var(--shadow-md);
   z-index: 5;
 }
-.scrollTopBtn:hover {
+.scrollTopBtn { top: 12px; }
+.scrollBottomBtn { bottom: 12px; }
+
+.scrollTopBtn:hover,
+.scrollBottomBtn:hover {
   background: var(--surface-2);
   color: var(--text-primary);
   border-color: var(--border-strong);

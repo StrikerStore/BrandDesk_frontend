@@ -199,16 +199,27 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
 
   const messagesEndRef  = useRef(null);
   const messagesBoxRef  = useRef(null);
-  const scrollStateRef  = useRef({ threadId: null, count: 0 });
+  const scrollStateRef  = useRef({ threadId: null });
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
 
-  const handleMessagesScroll = (e) => {
-    const show = e.currentTarget.scrollTop > 300;
-    setShowScrollTop(prev => (prev === show ? prev : show));
-  };
+  // Single source of truth for both jump buttons
+  const measureScroll = useCallback(() => {
+    const box = messagesBoxRef.current;
+    if (!box) return;
+    const top = box.scrollTop > 300;
+    const bottom = box.scrollHeight - box.scrollTop - box.clientHeight > 300;
+    setShowScrollTop(prev => (prev === top ? prev : top));
+    setShowScrollBottom(prev => (prev === bottom ? prev : bottom));
+  }, []);
 
   const scrollToTop = () => {
     messagesBoxRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const scrollToBottom = () => {
+    const box = messagesBoxRef.current;
+    if (box) box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
   };
   const textareaRef     = useRef(null);
   const tplRef          = useRef(null);
@@ -248,23 +259,17 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
     await updateThread(thread.id, { tags: newTags });
   };
 
-  // Scroll to bottom on initial load and on new messages — but never yank
-  // the user down while they've scrolled up to read older messages
+  // Land on the newest message when a thread is first opened — and never move
+  // the view again. New messages, polls and sends leave scroll position alone;
+  // use the jump buttons instead.
   useEffect(() => {
-    const st = scrollStateRef.current;
-    const isNewThread = st.threadId !== threadId;
-    const prevCount = isNewThread ? 0 : st.count;
-    scrollStateRef.current = { threadId, count: messages.length };
-
-    if (messages.length === 0 || messages.length <= prevCount) return;
-
-    const isInitial = prevCount === 0;
-    const box = messagesBoxRef.current;
-    const nearBottom = !box || box.scrollHeight - box.scrollTop - box.clientHeight < 150;
-    if (isInitial || nearBottom) {
-      messagesEndRef.current?.scrollIntoView({ behavior: isInitial ? 'auto' : 'smooth' });
-    }
-  }, [messages, threadId]);
+    if (scrollStateRef.current.threadId === threadId) return;
+    if (messages.length === 0) return;
+    scrollStateRef.current = { threadId };
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+    // Measure after the jump so the "to top" button shows straight away
+    requestAnimationFrame(measureScroll);
+  }, [messages, threadId, measureScroll]);
 
   // Reset compose on thread change
   useEffect(() => {
@@ -277,6 +282,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
     setShowComposeTools(false);
     setHeaderDetailsOpen(false);
     setShowScrollTop(false);
+    setShowScrollBottom(false);
   }, [threadId]);
 
   // Load templates once
@@ -609,7 +615,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
 
       {/* Messages */}
       <div className={styles.messagesWrap}>
-      <div className={styles.messages} ref={messagesBoxRef} onScroll={handleMessagesScroll}>
+      <div className={styles.messages} ref={messagesBoxRef} onScroll={measureScroll}>
         {messages.map((msg, i) => {
           const prev = messages[i - 1];
           const newDay = !prev || new Date(prev.sent_at).toDateString() !== new Date(msg.sent_at).toDateString();
@@ -642,6 +648,13 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
         <button className={styles.scrollTopBtn} onClick={scrollToTop} title="Scroll to top" aria-label="Scroll to top">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 19V5M5 12l7-7 7 7"/>
+          </svg>
+        </button>
+      )}
+      {showScrollBottom && (
+        <button className={styles.scrollBottomBtn} onClick={scrollToBottom} title="Scroll to bottom" aria-label="Scroll to bottom">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 5v14M19 12l-7 7-7-7"/>
           </svg>
         </button>
       )}
@@ -831,7 +844,6 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
             className={`${styles.textarea} ${styles.textareaEditor} ${isNote ? styles.textareaNote : ''} ${isExpanded ? styles.textareaExpanded : ''}`}
             onInput={e => { setReplyText(e.currentTarget.innerText); setGrammarMatches([]); }}
             onKeyDown={handleKeyDown}
-            onFocus={() => { setTimeout(() => messagesEndRef.current?.scrollIntoView({ block: 'end' }), 250); }}
             data-placeholder={isNote ? 'Add an internal note — not sent to customer…' : 'Type your reply… (press / for templates, ⌘↵ to send)'}
             spellCheck={true}
           />

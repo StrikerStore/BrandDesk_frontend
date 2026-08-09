@@ -28,9 +28,16 @@ function formatDateTime(val) {
   });
 }
 
+// Land on the first still-open action — that's the one an agent needs
+const firstOpenIdx = (list) => {
+  const i = list.findIndex(a => !a.is_closed);
+  return i === -1 ? 0 : i;
+};
+
 export default function ActionPanel({ threadId, onCountChange, onActionsChange }) {
   const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeIdx, setActiveIdx] = useState(0);
 
   const load = useCallback(async () => {
     if (!threadId) return;
@@ -39,6 +46,7 @@ export default function ActionPanel({ threadId, onCountChange, onActionsChange }
       const { data } = await fetchThreadActions(threadId);
       const list = data.actions || [];
       setActions(list);
+      setActiveIdx(firstOpenIdx(list));
       onCountChange?.(list.length);
       onActionsChange?.(list);
     } catch (err) {
@@ -103,16 +111,41 @@ export default function ActionPanel({ threadId, onCountChange, onActionsChange }
     );
   }
 
+  // activeIdx can go stale if the list shrinks between renders
+  const current = actions[activeIdx] || actions[0];
+
   return (
     <div className={styles.root}>
-      {actions.map(action => (
-        <ActionCard
-          key={action.id}
-          action={action}
-          onFieldUpdate={handleFieldUpdate}
-          onClose={handleClose}
-        />
-      ))}
+      {actions.length > 1 && (
+        <div className={styles.pagerStrip} role="tablist" aria-label="Actions on this ticket">
+          {actions.map((a, i) => {
+            const color = TYPE_COLORS[a.action_type];
+            const isActive = a.id === current.id;
+            return (
+              <button
+                key={a.id}
+                role="tab"
+                aria-selected={isActive}
+                className={`${styles.pagerPill} ${isActive ? styles.pagerPillActive : ''} ${a.is_closed ? styles.pagerPillClosed : ''}`}
+                style={isActive && color ? { background: color.bg, borderColor: color.border } : undefined}
+                onClick={() => setActiveIdx(i)}
+                title={a.is_closed ? 'Closed' : 'Open'}
+              >
+                <span className={styles.pagerIdx}>{i + 1}</span>
+                {TYPE_LABELS[a.action_type] || a.action_type}
+                <span className={`${styles.pagerDot} ${a.is_closed ? '' : styles.pagerDotOpen}`} />
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <ActionCard
+        key={current.id}
+        action={current}
+        onFieldUpdate={handleFieldUpdate}
+        onClose={handleClose}
+      />
     </div>
   );
 }
@@ -123,7 +156,7 @@ function ActionCard({ action, onFieldUpdate, onClose }) {
 
   return (
     <div className={`${styles.card} ${isClosed ? styles.cardClosed : ''}`}>
-      {/* Card header */}
+      {/* Card header — also holds Close, so it can never be clipped */}
       <div className={styles.cardHeader}>
         <div className={styles.cardHeaderLeft}>
           <span
@@ -132,11 +165,25 @@ function ActionCard({ action, onFieldUpdate, onClose }) {
           >
             {TYPE_LABELS[action.action_type]}
           </span>
-          {isClosed && <span className={styles.closedBadge}>Closed</span>}
+          {/* Closed state reads off the right-hand timestamp; the badge is only
+              a fallback for rows with no closed_at recorded */}
+          {isClosed && !action.closed_at && <span className={styles.closedBadge}>Closed</span>}
+          <span className={styles.cardDate}>
+            {formatDateTime(action.created_at)}
+          </span>
         </div>
-        <span className={styles.cardDate}>
-          {formatDateTime(action.created_at)}
-        </span>
+        {isClosed ? (
+          action.closed_at && (
+            <span className={styles.closedAt}>Closed {formatDateTime(action.closed_at)}</span>
+          )
+        ) : (
+          <button className={styles.closeActionBtn} onClick={() => onClose(action.id)}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 6L9 17l-5-5"/>
+            </svg>
+            Close
+          </button>
+        )}
       </div>
 
       {/* Jersey details */}
@@ -149,10 +196,8 @@ function ActionCard({ action, onFieldUpdate, onClose }) {
         {action.new_address && <JerseyInfo label="New Address" value={action.new_address} />}
       </div>
 
-      {/* Status section */}
+      {/* Status section — the jersey row's border already separates it */}
       <div className={styles.statusSection}>
-        <div className={styles.statusTitle}>Action Status</div>
-
         {action.action_type === 'exchange' && (
           <ExchangeStatus action={action} onFieldUpdate={onFieldUpdate} disabled={isClosed} />
         )}
@@ -186,23 +231,6 @@ function ActionCard({ action, onFieldUpdate, onClose }) {
           </div>
         )}
       </div>
-
-      {/* Close button */}
-      {!isClosed && (
-        <div className={styles.cardFooter}>
-          <button className={styles.closeActionBtn} onClick={() => onClose(action.id)}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M20 6L9 17l-5-5"/>
-            </svg>
-            Close Action
-          </button>
-        </div>
-      )}
-      {isClosed && action.closed_at && (
-        <div className={styles.closedAt}>
-          Closed on {formatDateTime(action.closed_at)}
-        </div>
-      )}
     </div>
   );
 }

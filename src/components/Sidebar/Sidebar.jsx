@@ -5,6 +5,10 @@ import Settings from '../Settings/Settings.jsx';
 import styles from './Sidebar.module.css';
 import logo from '../../assets/logo.png';
 
+// Survives the Sidebar unmounting — on mobile the whole rail is removed from the
+// tree when a ticket is opened (InboxPage), and remounting would otherwise
+// snap the list back to the top.
+let savedListScrollTop = 0;
 
 export default function Sidebar({
   threads, loading, loadingMore, hasMore, syncing, brands, filters,
@@ -29,11 +33,34 @@ export default function Sidebar({
   const handleListScroll = useCallback(() => {
     const el = listRef.current;
     if (!el) return;
+    savedListScrollTop = el.scrollTop;
     const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     if (distFromBottom < 200) {
       onLoadMore();
     }
   }, [onLoadMore]);
+
+  // Restore the scroll position once rows exist after a remount (mobile)
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current || !savedListScrollTop) return;
+    const el = listRef.current;
+    if (!el || threads.length === 0) return;
+    el.scrollTop = savedListScrollTop;
+    restoredRef.current = true;
+  }, [threads.length]);
+
+  // A new filter/search is a new list — start it at the top. Skipped on mount
+  // so it can't wipe the position we're about to restore.
+  const filtersKey = JSON.stringify(filters);
+  const prevFiltersKey = useRef(filtersKey);
+  useEffect(() => {
+    if (prevFiltersKey.current === filtersKey) return;
+    prevFiltersKey.current = filtersKey;
+    savedListScrollTop = 0;
+    restoredRef.current = true;
+    if (listRef.current) listRef.current.scrollTop = 0;
+  }, [filtersKey]);
 
   const handleLogout = async () => { try { await logoutUser(); } catch {} onLogout(); };
 

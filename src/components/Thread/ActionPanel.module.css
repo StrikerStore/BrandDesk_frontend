@@ -1,11 +1,63 @@
+/* The single scroll container for the actions area. min-height:0 lets it
+   actually shrink inside .actionsSection instead of overflowing it. */
 .root {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 16px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
+
+/* Pager — only rendered when a thread has more than one action */
+.pagerStrip {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.pagerStrip::-webkit-scrollbar { display: none; }
+
+.pagerPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: 99px;
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+.pagerPill:hover { border-color: var(--accent); color: var(--accent-text, var(--accent)); }
+.pagerPillActive {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.pagerPillClosed { opacity: 0.6; }
+
+.pagerIdx {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+}
+
+.pagerDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+  flex-shrink: 0;
+}
+.pagerDotOpen { background: #f59e0b; }
 
 /* Loading */
 .loading {
@@ -60,7 +112,6 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  overflow: hidden;
   transition: opacity 0.15s;
 }
 .cardClosed {
@@ -70,16 +121,19 @@
 .cardHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 7px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--surface-2);
+  border-radius: 9px 9px 0 0;
 }
 
 .cardHeaderLeft {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex: 1;
 }
 
 .typeBadge {
@@ -103,6 +157,7 @@
 .cardDate {
   font-size: 11px;
   color: var(--text-tertiary);
+  white-space: nowrap;
 }
 
 /* Jersey details */
@@ -110,7 +165,7 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  padding: 10px 14px;
+  padding: 7px 12px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -118,7 +173,7 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 4px 0;
+  padding: 2px 0;
 }
 
 .jerseyLabel {
@@ -127,7 +182,7 @@
   color: var(--text-tertiary);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  min-width: 60px;
+  min-width: 54px;
   flex-shrink: 0;
 }
 
@@ -135,27 +190,18 @@
   font-size: 12.5px;
   font-weight: 500;
   color: var(--text-primary);
-  line-height: 1.4;
+  line-height: 1.35;
 }
 
 /* Status section */
 .statusSection {
-  padding: 10px 14px;
-}
-
-.statusTitle {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  margin-bottom: 8px;
+  padding: 7px 12px;
 }
 
 .statusList {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 /* Checkbox row */
@@ -164,7 +210,7 @@
   align-items: center;
   gap: 9px;
   cursor: pointer;
-  padding: 3px 0;
+  padding: 2px 0;
   user-select: none;
 }
 .checkRowDisabled {
@@ -205,9 +251,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 0;
+  padding: 2px 0;
   gap: 8px;
-  min-height: 28px;
+  min-height: 24px;
 }
 
 .statusRowLeft {
@@ -288,36 +334,30 @@
   padding: 3px 4px;
 }
 
-/* Card footer */
-.cardFooter {
-  padding: 10px 14px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: flex-end;
-}
-
+/* Close button — lives in the card header so it can never be clipped by the
+   panel's height cap, and costs no footer strip of its own */
 .closeActionBtn {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11.5px;
-  font-weight: 500;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
   color: #16a34a;
   background: #f0fdf4;
   border: 1px solid #86efac;
   border-radius: 6px;
-  padding: 5px 12px;
+  padding: 4px 9px;
   cursor: pointer;
   transition: opacity 0.12s;
 }
 .closeActionBtn:hover { opacity: 0.8; }
 
 .closedAt {
-  padding: 8px 14px;
   font-size: 11px;
   color: var(--text-tertiary);
-  text-align: right;
-  border-top: 1px solid var(--border);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* ============================================================
@@ -325,7 +365,10 @@
    ============================================================ */
 @media (max-width: 768px) {
   .card { border: 2px solid var(--nb-ink); box-shadow: var(--nb-shadow-sm); border-radius: 14px; }
+  .cardHeader { border-radius: 12px 12px 0 0; }
   .typeBadge { border-width: 2px; font-weight: 700; }
+  .pagerPill { border: 2px solid var(--nb-ink); font-weight: 700; min-height: 34px; }
+  .pagerPillActive { background: var(--nb-mint); color: var(--nb-ink); box-shadow: none; }
   .jerseyValue, .statusValue { font-size: 14px; }
   .checkbox { width: 22px; height: 22px; border: 2px solid var(--nb-ink); }
   .checkLabel { font-size: 14px; }
