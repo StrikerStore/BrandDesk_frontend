@@ -57,6 +57,8 @@ export const fetchAnalyticsResponse  = (p={}) => api.get('/api/analytics/respons
 export const fetchAnalyticsSla       = (p={}) => api.get('/api/analytics/sla',           { params: p });
 export const fetchAnalyticsActions   = (p={}) => api.get('/api/analytics/actions',       { params: p });
 export const fetchAnalyticsAgents    = (p={}) => api.get('/api/analytics/agents',        { params: p });
+// Leaderboard on the typed resolver name — full history, ignores the agent filter
+export const fetchAnalyticsResolvedBy = (p={}) => api.get('/api/analytics/resolved-by',   { params: p });
 export const fetchAnalyticsTemplates = ()     => api.get('/api/analytics/templates');
 
 // Admin only — streams a multi-sheet .xlsx

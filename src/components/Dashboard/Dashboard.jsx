@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   fetchAnalyticsOverview, fetchAnalyticsVolume, fetchAnalyticsByBrand,
   fetchAnalyticsByIssue, fetchAnalyticsResponse, fetchAnalyticsSla,
-  fetchAnalyticsActions, fetchAnalyticsAgents, fetchAnalyticsTemplates,
-  downloadAnalyticsExport,
+  fetchAnalyticsActions, fetchAnalyticsAgents, fetchAnalyticsResolvedBy,
+  fetchAnalyticsTemplates, downloadAnalyticsExport,
 } from '../../utils/api.js';
 import styles from './Dashboard.module.css';
 
@@ -59,6 +59,7 @@ export default function Dashboard({ onClose, sidebarWidth, user, brands = [] }) 
   const [byIssue, setByIssue]     = useState([]);
   const [response, setResponse]   = useState([]);
   const [agents, setAgents]       = useState([]);
+  const [resolvers, setResolvers] = useState([]);
   const [actions, setActions]     = useState([]);
   const [templates, setTemplates] = useState([]);
   const [sla, setSla]             = useState(null);
@@ -85,10 +86,11 @@ export default function Dashboard({ onClose, sidebarWidth, user, brands = [] }) 
     setError(null);
     try {
       const p = JSON.parse(paramsKey);
-      const [ov, vol, br, iss, resp, slaD, act, ag, tpl] = await Promise.all([
+      const [ov, vol, br, iss, resp, slaD, act, ag, rby, tpl] = await Promise.all([
         fetchAnalyticsOverview(p), fetchAnalyticsVolume(p), fetchAnalyticsByBrand(p),
         fetchAnalyticsByIssue(p), fetchAnalyticsResponse(p), fetchAnalyticsSla(p),
-        fetchAnalyticsActions(p), fetchAnalyticsAgents(p), fetchAnalyticsTemplates(),
+        fetchAnalyticsActions(p), fetchAnalyticsAgents(p), fetchAnalyticsResolvedBy(p),
+        fetchAnalyticsTemplates(),
       ]);
       setOverview(ov.data);
       setVolume(vol.data || []);
@@ -98,6 +100,7 @@ export default function Dashboard({ onClose, sidebarWidth, user, brands = [] }) 
       setSla(slaD.data);
       setActions(act.data || []);
       setAgents(ag.data || []);
+      setResolvers(rby.data || []);
       setTemplates(tpl.data || []);
     } catch (err) {
       console.error('Analytics load error:', err);
@@ -435,6 +438,48 @@ export default function Dashboard({ onClose, sidebarWidth, user, brands = [] }) 
               )}
             </Panel>
 
+            {/* Grouped on the typed resolver name, so this covers all history
+                — including tickets resolved before agent tracking existed */}
+            <Panel
+              title="Resolved by (name entered)"
+              sub={periodLabel}
+              note="Grouped on the name typed in the resolve box, so it covers your full history. Not affected by the agent filter, and a person who typed their name inconsistently may still appear more than once."
+            >
+              {resolvers.length === 0 ? (
+                <Empty text="No tickets resolved in this period" />
+              ) : (
+                <table className={styles.table}>
+                  <thead><tr>
+                    <th>Name</th><th>Resolved</th><th>Avg response</th><th>Avg resolution</th>
+                  </tr></thead>
+                  <tbody>
+                    {resolvers.map(r => (
+                      <tr key={r.name}>
+                        <td>
+                          <div className={styles.agentCell}>
+                            <div className={styles.agentAvatar}>
+                              {r.is_system ? '🤖' : (r.name?.[0]?.toUpperCase() || '?')}
+                            </div>
+                            <span>{r.is_system ? 'Auto-resolved' : r.name}</span>
+                            {r.variants > 1 && (
+                              <span className={styles.youTag} title={`${r.variants} spellings of this name were merged`}>
+                                {r.variants} spellings
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td><strong>{r.total}</strong></td>
+                        <td className={styles.muted}>{formatMins(r.avg_response_mins)}</td>
+                        <td className={styles.muted}>{formatMins(r.avg_resolution_mins)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Panel>
+          </div>
+
+          <div className={styles.twoCol}>
             <Panel title="SLA breached tickets" sub="business hours: Mon–Sat 10AM–8PM IST">
               {!sla?.breaching_threads?.length ? (
                 <Empty text="✓ All open tickets are within SLA" isGood />
@@ -458,13 +503,13 @@ export default function Dashboard({ onClose, sidebarWidth, user, brands = [] }) 
                 </div>
               )}
             </Panel>
-          </div>
 
-          {templates.length > 0 && (
-            <Panel title="Most used templates" sub="all time">
-              <HBarChart data={templates} labelKey="title" valueKey="usage_count" />
-            </Panel>
-          )}
+            {templates.length > 0 && (
+              <Panel title="Most used templates" sub="all time">
+                <HBarChart data={templates} labelKey="title" valueKey="usage_count" />
+              </Panel>
+            )}
+          </div>
 
         </div>
       )}
