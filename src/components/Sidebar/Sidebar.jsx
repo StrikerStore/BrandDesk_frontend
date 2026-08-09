@@ -1,32 +1,33 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { logoutUser, fetchViews, createView, deleteView, fetchStats } from '../../utils/api';
+import { fetchViews, createView, deleteView, fetchStats, errorMessage } from '../../utils/api';
 import { formatTime, getBrandColor, STATUS_CONFIG, truncate, getInitials, displayOrderId } from '../../utils/helpers.js';
-import Settings from '../Settings/Settings.jsx';
+import { useToast } from '../../ui/ToastProvider.jsx';
 import styles from './Sidebar.module.css';
-import logo from '../../assets/logo.png';
 
-// Survives the Sidebar unmounting — on mobile the whole rail is removed from the
-// tree when a ticket is opened (InboxPage), and remounting would otherwise
-// snap the list back to the top.
+// Kept only for the mobile case, where opening a ticket swaps the list out of
+// the tree entirely. Desktop keeps both panes mounted.
 let savedListScrollTop = 0;
 
 export default function Sidebar({
-  threads, loading, loadingMore, hasMore, syncing, brands, filters,
-  onFilterChange, selectedId, onSelect, onSync, onFullSync, onLoadMore, onAnalytics, onActionsView, onNewTicket, user, onLogout,
+  threads, loading, loadingMore, hasMore, syncing, brands, filters, viewId,
+  activeChips = [], onRemoveChip, onClearFilters,
+  onFilterChange, onApplyView, selectedId, onSelect, onSync, onLoadMore, onNewTicket,
 }) {
-  const [showUserMenu, setShowUserMenu]   = useState(false);
-  const [showSettings, setShowSettings]   = useState(false);
-  const [searchVal, setSearchVal]         = useState('');
-  const [activeSearch, setActiveSearch]   = useState('');
+  const [searchVal, setSearchVal]         = useState(filters.search || '');
   const [stats, setStats]                 = useState({});
   const [savedViews, setSavedViews]       = useState([]);
-  const [activeViewId, setActiveViewId]   = useState(null);
   const [showSaveView, setShowSaveView]   = useState(false);
   const [viewName, setViewName]           = useState('');
   const [savingView, setSavingView]       = useState(false);
-  const [searchFocused, setSearchFocused] = useState(false); // mobile: search vs brand-filter width toggle
+  const [showBrandMenu, setShowBrandMenu] = useState(false);
   const searchRef = useRef(null);
   const listRef   = useRef(null);
+  const brandRef  = useRef(null);
+  const toast     = useToast();
+
+  // The URL is the source of truth for filters now, so an external change
+  // (Back, a shared link, "clear all") has to flow back into the input.
+  useEffect(() => { setSearchVal(filters.search || ''); }, [filters.search]);
 
   // Infinite scroll — load more when near bottom
   // onLoadMore has its own internal guards via refs, so just call it
@@ -62,8 +63,6 @@ export default function Sidebar({
     if (listRef.current) listRef.current.scrollTop = 0;
   }, [filtersKey]);
 
-  const handleLogout = async () => { try { await logoutUser(); } catch {} onLogout(); };
-
   // Load saved views from DB
   useEffect(() => {
     fetchViews()
@@ -81,40 +80,38 @@ export default function Sidebar({
       );
       const { data } = await createView({ name, filters: cleanFilters });
       setSavedViews(prev => [...prev, data]);
-      setActiveViewId(data.id);
+      onApplyView(data);
       setViewName('');
       setShowSaveView(false);
+      toast.success(`View “${name}” saved`);
     } catch (err) {
-      console.error('Save view failed:', err.message);
+      toast.error("Couldn't save this view", { detail: errorMessage(err) });
     } finally {
       setSavingView(false);
     }
   };
 
-  const handleApplyView = (view) => {
-    setActiveViewId(view.id);
-    setSearchVal('');
-    setActiveSearch('');
-    // Parse filters — MySQL returns JSON columns as objects already
-    const f = typeof view.filters === 'string' ? JSON.parse(view.filters) : view.filters;
-    onFilterChange(f);
-  };
-
-  const handleDeleteView = async (id, e) => {
+  // The ✕ sits inside the view pill, so a mis-tap used to destroy a saved view
+  // with no confirmation and no way back. Deleting is cheap to reverse, so the
+  // right guard is an undo toast rather than a blocking dialog.
+  const handleDeleteView = async (view, e) => {
     e.stopPropagation();
-    try {
-      await deleteView(id);
-      setSavedViews(prev => prev.filter(v => v.id !== id));
-      if (activeViewId === id) setActiveViewId(null);
-    } catch (err) {
-      console.error('Delete view failed:', err.message);
-    }
-  };
+    setSavedViews(prev => prev.filter(v => v.id !== view.id));
 
-  // Clear active view when filters change manually
-  const handleFilterChange = (updater) => {
-    setActiveViewId(null);
-    onFilterChange(updater);
+    try {
+      await deleteView(view.id);
+      toast.undo(`View “${view.name}” removed`, async () => {
+        try {
+          const { data } = await createView({ name: view.name, filters: view.filters });
+          setSavedViews(prev => [...prev, data]);
+        } catch (err) {
+          toast.error("Couldn't restore that view", { detail: errorMessage(err) });
+        }
+      });
+    } catch (err) {
+      setSavedViews(prev => [...prev, view]);          // put it back
+      toast.error("Couldn't remove this view", { detail: errorMessage(err) });
+    }
   };
 
   // Load counts
@@ -128,34 +125,38 @@ export default function Sidebar({
     return () => clearInterval(interval);
   }, []);
 
-  // Note: stats are loaded from the backend via fetchStats() which gives
-  // accurate total counts across ALL threads, not just the loaded page.
-
-  const commitSearch = () => {
+  // Search is debounced into the URL now. It used to require Enter or a click
+  // on a "Search" button, with no results-as-you-type at all.
+  useEffect(() => {
     const val = searchVal.trim();
-    setActiveSearch(val);
-    setActiveViewId(null);
-    onFilterChange(f => ({ ...f, search: val || undefined }));
-  };
+    if (val === (filters.search || '')) return;
+    const id = setTimeout(() => {
+      onFilterChange(f => ({ ...f, search: val || undefined }));
+    }, 300);
+    return () => clearTimeout(id);
+  }, [searchVal, filters.search, onFilterChange]);
 
   const clearSearch = () => {
     setSearchVal('');
-    setActiveSearch('');
     onFilterChange(f => { const { search, ...rest } = f; return rest; });
+    searchRef.current?.focus();
   };
 
   const handleSearchKey = (e) => {
-    if (e.key === 'Enter') commitSearch();
     if (e.key === 'Escape') clearSearch();
   };
 
-  const handleSearchChange = (val) => {
-    setSearchVal(val);
-    if (val === '') {
-      setActiveSearch('');
-      onFilterChange(f => { const { search, ...rest } = f; return rest; });
-    }
-  };
+  // Close the brand popover on outside click / Esc.
+  useEffect(() => {
+    if (!showBrandMenu) return;
+    const onDown = (e) => { if (brandRef.current && !brandRef.current.contains(e.target)) setShowBrandMenu(false); };
+    const onKey  = (e) => { if (e.key === 'Escape') setShowBrandMenu(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [showBrandMenu]);
+
+  const handleFilterChange = onFilterChange;
 
   const totalCount = Object.values(stats).reduce((a, b) => a + b, 0);
 
@@ -169,216 +170,198 @@ export default function Sidebar({
   const unreadCount = threads.filter(t => t.is_unread).length;
   const urgentCount = threads.filter(t => t.priority === 'urgent' && t.status !== 'resolved').length;
 
-  // Keyboard shortcut: Cmd/Ctrl+K to focus search
+  // ⌘K now opens the command palette (AppShell). `/` focuses this field, and
+  // j/k walk the list the way every mail client does.
   useEffect(() => {
+    const isTyping = (el) =>
+      el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+
     const handler = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        searchRef.current?.focus();
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isTyping(document.activeElement)) return;
+
+      if (e.key === '/') { e.preventDefault(); searchRef.current?.focus(); return; }
+
+      if (e.key !== 'j' && e.key !== 'k' && e.key !== 'Enter') return;
+      if (threads.length === 0) return;
+
+      const idx = threads.findIndex(t => t.id === selectedId);
+      if (e.key === 'Enter') {
+        if (idx >= 0) return;                       // already open
+        e.preventDefault(); onSelect(threads[0].id); return;
       }
+      e.preventDefault();
+      const next = e.key === 'j'
+        ? Math.min(idx + 1, threads.length - 1)
+        : Math.max(idx - 1, 0);
+      onSelect(threads[next === -1 ? 0 : next].id);
     };
+
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [threads, selectedId, onSelect]);
+
+  const activeView = savedViews.find(v => v.id === viewId);
 
   return (
-    <aside className={styles.root}>
-      {/* Header */}
+    <aside className={styles.root} aria-label="Ticket list">
+      {/* Header — brand identity and global nav moved to the rail; what's left
+          is inbox-scoped: the title, the two inbox actions, and filtering. */}
       <div className={styles.header}>
         <div className={styles.headerTop}>
-          <div className={styles.logo}>
-            <img src={logo} alt="Logo" style={{ width: 28, height: 28, objectFit: 'contain' }} />
-            <span className={styles.logoText}>BrandDesk</span>
+          <div className={styles.titleWrap}>
+            <h1 className={styles.title}>Inbox</h1>
+            {unreadCount > 0 && <span className={styles.unreadBadge}>{unreadCount} new</span>}
+            {urgentCount > 0 && <span className={styles.urgentBadge}>{urgentCount} urgent</span>}
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button className={`${styles.iconBtn} ${styles.hideMobile}`} onClick={onNewTicket} title="Raise ticket for customer">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4z"/>
-              </svg>
-            </button>
-            <button className={styles.iconBtn} onClick={onSync} disabled={syncing} title="Sync emails">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+          <div className={styles.headerActions}>
+            <button className={styles.iconBtn} onClick={onSync} disabled={syncing}
+              aria-label={syncing ? 'Fetching new email…' : 'Fetch new email'} title="Fetch new email">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
                 style={{ animation: syncing ? 'spin 1s linear infinite' : 'none' }}>
                 <path d="M23 4v6h-6M1 20v-6h6"/>
                 <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
               </svg>
             </button>
-            <button className={`${styles.iconBtn} ${styles.hideMobile}`} onClick={onActionsView} title="Actions tracker">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
-                <rect x="9" y="3" width="6" height="4" rx="1"/>
-                <path d="M9 12h6M9 16h4"/>
+            <button className={styles.newBtn} onClick={onNewTicket}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
               </svg>
+              New
             </button>
-            <button className={`${styles.iconBtn} ${styles.hideMobile}`} onClick={onAnalytics} title="Analytics">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="18" y1="20" x2="18" y2="10"/>
-                <line x1="12" y1="20" x2="12" y2="4"/>
-                <line x1="6"  y1="20" x2="6"  y2="14"/>
-              </svg>
-            </button>
-            <div style={{ position: 'relative' }}>
-              <button className={styles.iconBtn} onClick={() => setShowUserMenu(v => !v)} title={user?.email}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-                </svg>
-              </button>
-              {showUserMenu && (
-                <div className={styles.userMenu}>
-                  <div className={styles.userInfo}>
-                    <div className={styles.userName}>{user?.name}</div>
-                    <div className={styles.userEmail}>{user?.email}</div>
-                    <span className={`${styles.userRole} ${user?.role === 'admin' ? styles.userRoleAdmin : ''}`}>
-                      {user?.role}
-                    </span>
-                  </div>
-                  <div className={styles.userMenuDivider} />
-                  <button className={styles.userMenuItem} onClick={() => { setShowUserMenu(false); setShowSettings(true); }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
-                    Settings
-                  </button>
-                  {user?.role === 'admin' && (
-                    <button className={styles.userMenuItem}
-                      onClick={() => { setShowUserMenu(false); onFullSync(); }}
-                      disabled={syncing}
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                        <path d="M23 4v6h-6M1 20v-6h6"/>
-                        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
-                      </svg>
-                      {syncing ? 'Syncing…' : 'Full Sync (500)'}
-                    </button>
-                  )}
-                  {user?.role === 'admin' && (
-                    <a className={`${styles.userMenuItem} ${styles.hideMobile}`}
-                      href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/auth/google`}
-                      onClick={() => setShowUserMenu(false)}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8a19.79 19.79 0 01-3.07-8.67A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg>
-                      Connect Gmail
-                    </a>
-                  )}
-                  <div className={styles.userMenuDivider} />
-                  <button className={styles.userMenuItemDanger} onClick={handleLogout}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-                    Sign out
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         </div>
 
-        {/* Inbox meta */}
-        <div className={styles.inboxMeta}>
-          <span className={styles.inboxLabel}>Inbox</span>
-          <div style={{ display: 'flex', gap: 5 }}>
-            {unreadCount > 0 && <span className={styles.unreadBadge}>{unreadCount} new</span>}
-            {urgentCount > 0 && <span className={styles.urgentBadge}>{urgentCount} urgent</span>}
-          </div>
+        {/* Search — debounced, no explicit commit */}
+        <div className={styles.searchWrap} onClick={() => searchRef.current?.focus()}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={styles.searchIcon}>
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <label className="sr-only" htmlFor="ticket-search">Search tickets</label>
+          <input
+            id="ticket-search"
+            type="search"
+            ref={searchRef}
+            className={styles.searchInput}
+            placeholder="Search tickets…  /"
+            value={searchVal}
+            onChange={e => setSearchVal(e.target.value)}
+            onKeyDown={handleSearchKey}
+          />
+          {searchVal && (
+            <button className={styles.searchClear} onClick={clearSearch} aria-label="Clear search">✕</button>
+          )}
         </div>
-      </div>
 
-      {/* Search + saved views + brand filters.
-          Desktop: wrapper is display:contents (layout identical).
-          Mobile: wrapper is a flex row — search and brand pills share it,
-          whichever is tapped expands; saved views are hidden. */}
-      <div className={`${styles.searchFilterRow} ${searchFocused || searchVal ? styles.searchExpanded : ''}`}>
-      {/* Search */}
-      <div className={styles.searchWrap} onClick={() => searchRef.current?.focus()}>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={styles.searchIcon}>
-          <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-        </svg>
-        <input
-          ref={searchRef}
-          className={styles.searchInput}
-          placeholder="Search or #tag… (⌘K)"
-          value={searchVal}
-          onChange={e => handleSearchChange(e.target.value)}
-          onKeyDown={handleSearchKey}
-          onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
-        />
-        {searchVal && (
-          <button className={styles.searchClear} onClick={clearSearch} title="Clear search">✕</button>
-        )}
-        <button
-          className={`${styles.searchBtn} ${activeSearch ? styles.searchBtnActive : ''}`}
-          onClick={commitSearch}
-          title="Search"
-        >
-          Search
-        </button>
-      </div>
+        {/* Saved views + brand filter — one row of controls, not two competing
+            pill sets. Brands moved into a popover so a long brand list can no
+            longer eat three rows of vertical space. */}
+        <div className={styles.controlRow}>
+          <div className={styles.viewSelectWrap}>
+            <label className="sr-only" htmlFor="saved-view">Saved view</label>
+            <select
+              id="saved-view"
+              className={styles.viewSelect}
+              value={viewId ?? ''}
+              onChange={e => {
+                const v = savedViews.find(s => String(s.id) === e.target.value);
+                if (v) onApplyView(v);
+              }}
+            >
+              <option value="">{activeView ? activeView.name : 'No saved view'}</option>
+              {savedViews.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+            </select>
+          </div>
 
-      {/* Saved views */}
-      {(savedViews.length > 0 || true) && (
-        <div className={styles.savedViews}>
-          <div className={styles.savedViewsRow}>
-            {savedViews.map(view => (
-              <div
-                key={view.id}
-                className={`${styles.viewPill} ${activeViewId === view.id ? styles.viewPillActive : ''}`}
-                onClick={() => handleApplyView(view)}
-                title={`${view.filters.brand !== 'all' ? view.filters.brand : 'All brands'} · ${view.filters.status}`}
-              >
-                <span className={styles.viewPillName}>{view.name}</span>
+          <div className={styles.brandWrap} ref={brandRef}>
+            <button
+              className={`${styles.brandBtn} ${filters.brand !== 'all' ? styles.brandBtnActive : ''}`}
+              onClick={() => setShowBrandMenu(v => !v)}
+              aria-expanded={showBrandMenu}
+              aria-haspopup="listbox"
+            >
+              {filters.brand === 'all' ? 'All brands' : filters.brand}
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            {showBrandMenu && (
+              <div className={styles.brandMenu} role="listbox">
                 <button
-                  className={styles.viewPillDelete}
-                  onClick={(e) => handleDeleteView(view.id, e)}
-                  title="Remove view"
-                >✕</button>
+                  className={`${styles.brandOption} ${filters.brand === 'all' ? styles.brandOptionActive : ''}`}
+                  role="option" aria-selected={filters.brand === 'all'}
+                  onClick={() => { handleFilterChange(f => ({ ...f, brand: 'all' })); setShowBrandMenu(false); }}
+                >All brands</button>
+                {brands.map(b => {
+                  const color = getBrandColor(b.name);
+                  const isActive = filters.brand === b.name;
+                  return (
+                    <button key={b.name}
+                      className={`${styles.brandOption} ${isActive ? styles.brandOptionActive : ''}`}
+                      role="option" aria-selected={isActive}
+                      onClick={() => { handleFilterChange(f => ({ ...f, brand: b.name })); setShowBrandMenu(false); }}
+                    >
+                      <span className={styles.brandSwatch} style={{ background: color.bg, borderColor: color.border }} />
+                      {b.name}
+                    </button>
+                  );
+                })}
               </div>
-            ))}
-            {showSaveView ? (
-              <div className={styles.saveViewInput}>
-                <input
-                  autoFocus
-                  className={styles.viewNameInput}
-                  placeholder="View name…"
-                  value={viewName}
-                  onChange={e => setViewName(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') handleSaveView();
-                    if (e.key === 'Escape') { setShowSaveView(false); setViewName(''); }
-                  }}
-                  maxLength={24}
-                />
-                <button className={styles.viewSaveBtn} onClick={handleSaveView} disabled={!viewName.trim() || savingView}>
-                  {savingView ? '…' : 'Save'}
-                </button>
-                <button className={styles.viewCancelBtn} onClick={() => { setShowSaveView(false); setViewName(''); }}>✕</button>
-              </div>
-            ) : (
-              <button className={styles.addViewBtn} onClick={() => setShowSaveView(true)} title="Save current filters as a view">
-                + Save view
-              </button>
             )}
           </div>
-        </div>
-      )}
 
-      {/* Brand filters */}
-      <div className={styles.filterSection}>
-        <div className={styles.pills}>
-          <button
-            className={`${styles.pill} ${filters.brand === 'all' ? styles.pillActive : ''}`}
-            onClick={() => handleFilterChange(f => ({ ...f, brand: 'all' }))}
-          >All brands</button>
-          {brands.map(b => {
-            const color   = getBrandColor(b.name);
-            const isActive = filters.brand === b.name;
-            return (
-              <button key={b.name}
-                className={`${styles.pill} ${isActive ? styles.pillBrandActive : ''}`}
-                style={isActive ? { background: color.bg, color: color.text, borderColor: color.border } : {}}
-                onClick={() => handleFilterChange(f => ({ ...f, brand: b.name }))}
-              >{b.name}</button>
-            );
-          })}
+          {showSaveView ? (
+            <div className={styles.saveViewInput}>
+              <input
+                autoFocus
+                className={styles.viewNameInput}
+                placeholder="View name…"
+                value={viewName}
+                onChange={e => setViewName(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleSaveView();
+                  if (e.key === 'Escape') { setShowSaveView(false); setViewName(''); }
+                }}
+                maxLength={24}
+              />
+              <button className={styles.viewSaveBtn} onClick={handleSaveView} disabled={!viewName.trim() || savingView}>
+                {savingView ? '…' : 'Save'}
+              </button>
+              <button className={styles.viewCancelBtn} onClick={() => { setShowSaveView(false); setViewName(''); }} aria-label="Cancel">✕</button>
+            </div>
+          ) : (
+            <button className={styles.addViewBtn} onClick={() => setShowSaveView(true)} title="Save current filters as a view">
+              + Save view
+            </button>
+          )}
+
+          {activeView && (
+            <button
+              className={styles.viewPillDelete}
+              onClick={(e) => handleDeleteView(activeView, e)}
+              aria-label={`Remove view ${activeView.name}`}
+              title="Remove this view"
+            >✕</button>
+          )}
         </div>
+
+        {/* One place that shows everything currently narrowing the list, with
+            a way out. Three separate filter controls used to leave "why is my
+            list empty?" unanswerable. */}
+        {activeChips.length > 0 && (
+          <div className={styles.chipRow}>
+            {activeChips.map(chip => (
+              <span key={chip.key} className={styles.chip}>
+                <span className={styles.chipLabel}>{chip.label}:</span> {chip.value}
+                <button
+                  className={styles.chipRemove}
+                  onClick={() => onRemoveChip(chip.key)}
+                  aria-label={`Remove ${chip.label} filter`}
+                >✕</button>
+              </span>
+            ))}
+            <button className={styles.clearAll} onClick={onClearFilters}>Clear all</button>
+          </div>
+        )}
       </div>
-      </div>{/* /searchFilterRow */}
 
       {/* Status tabs */}
       <div className={styles.statusTabs}>
@@ -403,7 +386,10 @@ export default function Sidebar({
           <div className={styles.loadingWrap}>{[1,2,3,4].map(i => <ThreadSkeleton key={i} />)}</div>
         ) : threads.length === 0 ? (
           <div className={styles.emptyList}>
-            <p>{searchVal ? `No results for "${searchVal}"` : 'No tickets match these filters'}</p>
+            <p>{searchVal ? `No results for “${searchVal}”` : 'No tickets match these filters'}</p>
+            {activeChips.length > 0 && (
+              <button className={styles.emptyClear} onClick={onClearFilters}>Clear all filters</button>
+            )}
           </div>
         ) : (
           <>
@@ -431,8 +417,6 @@ export default function Sidebar({
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-
-      {showSettings && <Settings onClose={() => setShowSettings(false)} user={user} />}
     </aside>
   );
 }
@@ -456,7 +440,16 @@ function ThreadRow({ thread, selected, onSelect }) {
     <button
       className={`${styles.threadRow} ${selected ? styles.threadSelected : ''} ${thread.is_unread ? styles.threadUnread : ''} ${thread.priority === 'urgent' ? styles.threadUrgent : ''} ${slaStatus === 'breached' ? styles.threadBreached : slaStatus === 'at_risk' ? styles.threadAtRisk : ''}`}
       onClick={onSelect}
+      data-focus-inset
+      aria-current={selected ? 'true' : undefined}
     >
+      {/* The unread/urgent/SLA cues are colour-and-shape only; spell them out
+          so they survive a screen reader and colour-blind vision. */}
+      <span className="sr-only">
+        {thread.is_unread ? 'Unread. ' : ''}
+        {thread.priority === 'urgent' ? 'Urgent. ' : ''}
+        {slaStatus === 'breached' ? 'SLA breached. ' : slaStatus === 'at_risk' ? 'SLA at risk. ' : ''}
+      </span>
       {thread.is_unread ? <span className={styles.unreadDot} /> : null}
 
       <div className={styles.avatarWrap}>

@@ -5,7 +5,7 @@ import styles from './TemplateEditor.module.css';
 const CATEGORIES = ['General', 'Shipping', 'Refunds', 'Exchanges'];
 const VARIABLES = ['{{customer_name}}', '{{order_id}}', '{{ticket_id}}', '{{tracking_url}}', '{{tracking_link}}', '{{amount}}', '{{brand}}'];
 
-export default function TemplateEditor({ onClose }) {
+export default function TemplateEditor() {
   const [templates, setTemplates]   = useState([]);
   const [grouped, setGrouped]       = useState({});
   const [editing, setEditing]       = useState(null); // null | 'new' | template obj
@@ -62,8 +62,7 @@ export default function TemplateEditor({ onClose }) {
     <div className={styles.overlay}>
       <div className={styles.modal}>
         <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>Template editor</h2>
-          <button className={styles.closeBtn} onClick={onClose}>✕</button>
+          <h2 className={styles.modalTitle}>Templates</h2>
         </div>
 
         <div className={styles.modalBody}>

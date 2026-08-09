@@ -1,8 +1,8 @@
+/* In-flow page inside the shell's main region — no longer a z-index 800
+   fixed overlay covering the whole viewport including the nav. */
 .root {
-  position: fixed;
-  inset: 0;
+  height: 100%;
   background: var(--surface);
-  z-index: 800;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -483,7 +483,7 @@
     top: 0;
     bottom: calc(64px + env(safe-area-inset-bottom));
     background: var(--bg);
-  }
+ }
 
   /* Header */
   .header {
@@ -491,16 +491,14 @@
     align-items: stretch;
     gap: 12px;
     padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
-    border-bottom: 3px solid var(--nb-ink);
     background: var(--surface);
-  }
-  .title { font-size: 22px; font-weight: 800; }
-  .summaryBadge { border: 1.5px solid var(--nb-ink) !important; font-weight: 800; }
+ }
+  .title { font-size: 22px; font-weight: 600; }
+  .summaryBadge { font-weight: 600; }
   .headerRight { justify-content: flex-start; }
-  .filterGroup { border: 2px solid var(--nb-ink); border-radius: 12px; }
-  .filterBtn { min-height: 38px; font-weight: 700; }
-  .filterBtnActive { background: var(--nb-lav); box-shadow: var(--nb-shadow-sm); }
-  .typeSelect { min-height: 42px; border: 2px solid var(--nb-ink); border-radius: 10px; font-weight: 700; }
+  .filterGroup { border-radius: 12px; }
+  .filterBtn { min-height: 38px; font-weight: 600; }
+  .typeSelect { min-height: 42px; border-radius: 10px; font-weight: 600; }
   .closeBtn { display: none; }
 
   /* Table → cards */
@@ -509,48 +507,222 @@
   .table thead { display: none; }
 
   .table tr {
-    border: 2px solid var(--nb-ink);
     border-radius: 16px;
-    box-shadow: var(--nb-shadow-sm);
     background: var(--surface);
     padding: 14px;
     margin-bottom: 14px;
-  }
+ }
   .row td { padding: 6px 0; vertical-align: initial; }
   .row td:empty { display: none; }
 
-  .ticketName { font-size: 15px; font-weight: 800; }
-  .ticketId { border: 1.5px solid var(--nb-ink); }
-  .brandTag { border: 1.5px solid var(--nb-ink); }
-  .typeBadge { border-width: 2px !important; font-size: 12px; }
+  .ticketName { font-size: 15px; font-weight: 600; }
+  .typeBadge { font-size: 12px; }
 
   .jerseyValue, .fieldRowValue { font-size: 13.5px; }
-  .checkbox { width: 20px; height: 20px; border: 2px solid var(--nb-ink); }
+  .checkbox { width: 20px; height: 20px; }
   .checkLabel { font-size: 13.5px; }
   .checkItem { min-height: 32px; }
 
-  .jerseyTextarea, .inlineInput { font-size: 16px; border: 2px solid var(--nb-ink); border-radius: 8px; min-height: 40px; }
-  .inlineSave { min-height: 38px; border: 2px solid var(--nb-ink); font-weight: 800; }
+  .jerseyTextarea, .inlineInput { font-size: 16px; border-radius: 8px; min-height: 40px; }
+  .inlineSave { min-height: 38px; font-weight: 600; }
 
   .dateCell::before {
     content: 'Logged ';
-    font-weight: 800;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-size: 10px;
-  }
+ }
 
   .actionsCell { width: 100%; text-align: left; }
   .closeActionBtn {
     width: 100%;
     justify-content: center;
     min-height: 44px;
-    border: 2px solid var(--nb-ink);
     border-radius: 12px;
     font-size: 14px;
-    font-weight: 800;
-    background: var(--nb-mint);
-    color: var(--nb-ink);
+    font-weight: 600;
     margin-top: 6px;
+ }
+}
+
+/* ============================================================
+   PHASE 4 — scannable table + detail panel
+   The old table put 7 columns of nested mini-forms in every row,
+   with two different save models. Rows are now scan-only and the
+   editing lives in ActionDetail.
+   ============================================================ */
+
+.root { position: relative; }
+
+.badgeOpen   { background: var(--amber-light); color: var(--amber-text); border: 1px solid #fcd34d; }
+.badgeClosed { background: var(--green-light); color: var(--green-text); border: 1px solid #86efac; }
+
+/* Type filter chips — a <select> hid which types even exist */
+.typeChips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.typeChip {
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 4px 11px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  background: var(--surface);
+  transition: all 0.12s;
+}
+.typeChip:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.typeChipActive { border-color: var(--border-strong); color: var(--text-primary); font-weight: 600; }
+
+/* Bulk bar */
+.bulkBar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 24px;
+  background: var(--accent-light);
+  border-bottom: 1px solid #93c5fd;
+  flex-shrink: 0;
+}
+.bulkCount { font-size: 12.5px; font-weight: 600; color: var(--accent-text); }
+
+.bulkBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: #fff;
+}
+.bulkBtn:hover { opacity: 0.9; }
+
+.bulkClear {
+  font-size: 12px;
+  color: var(--accent-text);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+}
+.bulkClear:hover { background: rgba(255, 255, 255, 0.6); }
+
+/* Skeletons instead of a centred spinner that shifts the layout */
+.skeletonWrap { padding: 16px 24px; display: flex; flex-direction: column; gap: 10px; }
+.skeletonRow {
+  height: 46px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 37%, var(--surface-2) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.3s ease infinite;
+}
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: 0 0; } }
+
+.selCell { width: 36px; padding-left: 24px !important; }
+
+.nativeCheck { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+.nativeCheck:disabled { cursor: not-allowed; opacity: 0.4; }
+
+.rowActive { background: var(--accent-light) !important; }
+
+.rowOpen {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  text-align: left;
+  padding: 2px 0;
+  background: none;
+}
+.rowMeta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+
+/* Progress bar replaces the inline checklist column */
+.progressWrap { display: inline-flex; align-items: center; gap: 7px; }
+
+.progressTrack {
+  width: 54px;
+  height: 5px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.progressFill {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+.progressDone { background: var(--green); }
+.progressText { font-size: 11px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+.ageCell { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+/* A week-old open action is the thing worth noticing in this table */
+.ageStale { color: var(--red-text); font-weight: 600; }
+
+.openPill {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--amber-light);
+  color: var(--amber-text);
+  border: 1px solid #fcd34d;
+}
+.closedPill {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  color: var(--text-secondary);
+}
+
+/* ── Narrow: the table becomes a card list ──────────────────────
+   It used to scroll sideways below ~1200px with no responsive
+   treatment at all. */
+@media (max-width: 900px) {
+  .typeChips, .bulkBar { padding-inline: 14px; }
+
+  .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+  .table thead { display: none; }
+
+  .table tr {
+    position: relative;
+    margin: 0 14px 10px;
+    width: auto;
+    padding: 12px 12px 12px 40px;
+    border: 1px solid var(--border-md);
+    border-radius: var(--radius-md);
+    background: var(--surface);
   }
+
+  .table td { border: none; padding: 2px 0; }
+
+  .selCell {
+    position: absolute;
+    left: 12px;
+    top: 13px;
+    width: auto;
+    padding-left: 0 !important;
+  }
+
+  /* Label the values that lose their column header */
+  .progressWrap::before,
+  .ageCell::before {
+    font-size: 10.5px;
+    color: var(--text-tertiary);
+    margin-right: 6px;
+  }
+  .progressWrap::before { content: 'Progress'; }
+  .ageCell::before { content: 'Age'; }
 }

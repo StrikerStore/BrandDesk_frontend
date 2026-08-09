@@ -359,47 +359,36 @@
   .panelHeader {
     padding: 6px 18px 12px;
     font-size: 13px;
-    font-weight: 800;
-    border-bottom: 2px solid var(--nb-ink);
-  }
+    font-weight: 600;
+ }
   .body { padding: 16px 18px calc(24px + env(safe-area-inset-bottom)); gap: 18px; }
 
   .avatar {
     width: 48px;
     height: 48px;
     border-radius: 14px;
-    border: 2px solid var(--nb-ink);
     font-size: 15px;
-    font-weight: 800;
-  }
-  .customerName { font-size: 16px; font-weight: 800; }
+    font-weight: 600;
+ }
+  .customerName { font-size: 16px; font-weight: 600; }
 
   .sectionTitle {
     font-size: 11px;
-    font-weight: 800;
-    border-bottom: 2px solid var(--nb-ink);
+    font-weight: 600;
     padding-bottom: 6px;
-  }
+ }
 
-  .statCard, .ticketCard, .orderCard, .notFound {
-    border: 2px solid var(--nb-ink);
-    box-shadow: var(--nb-shadow-sm);
-  }
-  .statVal { font-size: 20px; font-weight: 800; }
-  .ptTag { border: 1.5px solid var(--nb-ink); }
+  .statVal { font-size: 20px; font-weight: 600; }
 
   .notesArea, .addInput {
-    border: 2px solid var(--nb-ink);
     border-radius: 12px;
     font-size: 16px;
-  }
+ }
   .saveNotesBtn, .addBtn, .saveAddBtn, .cancelBtn {
     min-height: 46px;
-    border: 2px solid var(--nb-ink);
     border-radius: 12px;
-    font-weight: 800;
-  }
-  .saveNotesBtn { background: var(--nb-mint); color: var(--nb-ink); }
+    font-weight: 600;
+ }
   .pastTicket { padding: 12px 0; }
   .ptSubject { font-size: 14px; }
 }

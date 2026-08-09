@@ -1,67 +1,86 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { fetchBrands } from '../utils/api';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { errorMessage } from '../utils/api';
 import { useThreads } from '../hooks/useThreads.js';
+import { useFilters } from '../hooks/useFilters.js';
 import { useIsMobile } from '../hooks/useIsMobile.js';
+import { useToast } from '../ui/ToastProvider.jsx';
+import { useShell } from '../layouts/AppShell.jsx';
 import Sidebar from '../components/Sidebar/Sidebar.jsx';
 import ThreadPanel from '../components/Thread/ThreadPanel.jsx';
 import CustomerPanel from '../components/Customer/CustomerPanel.jsx';
-import Dashboard from '../components/Dashboard/Dashboard.jsx';
-import ActionsView from '../components/Actions/ActionsView.jsx';
 import NewTicketModal from '../components/NewTicket/NewTicketModal.jsx';
-import Settings from '../components/Settings/Settings.jsx';
-import BottomNav from '../components/Mobile/BottomNav.jsx';
 import styles from './InboxPage.module.css';
 
-const SIDEBAR_MIN = 220;
-const SIDEBAR_MAX = 340;
-const SIDEBAR_DEFAULT = 260;
-const CUSTOMER_MIN = 280;
-const CUSTOMER_MAX = 480;
-const CUSTOMER_DEFAULT = 320;
+const LIST_MIN = 260, LIST_MAX = 420, LIST_DEFAULT = 300;
+const CTX_MIN  = 280, CTX_MAX  = 480, CTX_DEFAULT  = 320;
 
-export default function InboxPage({ user, onLogout }) {
-  const [brands, setBrands]                     = useState([]);
-  const [filters, setFilters]                   = useState({ brand: 'all', status: 'open' });
-  const [selectedThreadId, setSelectedThreadId] = useState(null);
-  const [sidebarW, setSidebarW]                 = useState(SIDEBAR_DEFAULT);
-  const [customerW, setCustomerW]               = useState(CUSTOMER_DEFAULT);
-  const [showAnalytics, setShowAnalytics]       = useState(false);
-  const [showActionsView, setShowActionsView]   = useState(false);
-  const [showNewTicket, setShowNewTicket]       = useState(false);
+// Pane widths and drawer state are a per-agent preference; they shouldn't
+// reset on every reload.
+const readPref = (key, fallback) => {
+  const v = Number(localStorage.getItem(key));
+  return Number.isFinite(v) && v > 0 ? v : fallback;
+};
 
-  // Mobile-only navigation state (ignored on desktop)
+export default function InboxPage() {
+  const toast    = useToast();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [mobileTab, setMobileTab]               = useState('inbox');
+  const { brands } = useShell();
+  const [, setSearchParams] = useSearchParams();
+
+  // The open ticket is a URL segment now, not component state — so it is
+  // linkable, survives refresh, and Back leaves the thread.
+  const { threadId: threadIdParam } = useParams();
+  const selectedThreadId = threadIdParam ? Number(threadIdParam) : null;
+
+  const { filters, viewId, setFilters, applyView, clearAll, activeChips, removeChip } = useFilters();
+
+  const [listW, setListW]       = useState(() => readPref('bd_list_w', LIST_DEFAULT));
+  const [ctxW, setCtxW]         = useState(() => readPref('bd_ctx_w', CTX_DEFAULT));
+  const [ctxOpen, setCtxOpen]   = useState(() => localStorage.getItem('bd_ctx_open') !== 'false');
+  const [showNewTicket, setShowNewTicket] = useState(false);
   const [showCustomerSheet, setShowCustomerSheet] = useState(false);
 
   const draggingRef = useRef(null);
   const startXRef   = useRef(0);
   const startWRef   = useRef(0);
 
-  const { threads, loading, loadingMore, syncing, hasMore, sync, fullSync, loadMore, reload, updateThreadLocal, removeThreadLocal } = useThreads(
-    (() => {
-      const { search, ...rest } = filters;
-      const params = { ...rest };
-      if (search) params.search = search;
-      return params;
-    })()
-  );
+  const {
+    threads, loading, loadingMore, syncing, hasMore, error: listError,
+    sync, fullSync, loadMore, reload, updateThreadLocal, removeThreadLocal,
+  } = useThreads(filters);
 
   useEffect(() => {
-    fetchBrands().then(({ data }) => setBrands(data)).catch(() => {});
-  }, []);
+    if (listError) toast.error("Couldn't load tickets", { detail: listError });
+  }, [listError, toast]);
 
+  const handleSync = useCallback(async (full = false) => {
+    const res = await (full ? fullSync() : sync());
+    if (!res?.ok) {
+      toast.error("Couldn't fetch new email", { detail: errorMessage(res?.error) });
+    } else if (res.imported === 0) {
+      toast.info('No new email');
+    } else if (res.imported > 0) {
+      toast.success(`${res.imported} new ticket${res.imported > 1 ? 's' : ''} imported`);
+    } else {
+      toast.success('Inbox up to date');
+    }
+  }, [sync, fullSync, toast]);
+
+  // ── Pane resizing ──────────────────────────────────────────────
   useEffect(() => {
     const onMove = (e) => {
       if (!draggingRef.current) return;
       const dx = e.clientX - startXRef.current;
-      if (draggingRef.current === 'sidebar') {
-        setSidebarW(Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, startWRef.current + dx)));
-      } else if (draggingRef.current === 'customer') {
-        setCustomerW(Math.min(CUSTOMER_MAX, Math.max(CUSTOMER_MIN, startWRef.current - dx)));
+      if (draggingRef.current === 'list') {
+        setListW(Math.min(LIST_MAX, Math.max(LIST_MIN, startWRef.current + dx)));
+      } else {
+        setCtxW(Math.min(CTX_MAX, Math.max(CTX_MIN, startWRef.current - dx)));
       }
     };
     const onUp = () => {
+      if (draggingRef.current === 'list') localStorage.setItem('bd_list_w', String(startWRef.current));
       draggingRef.current = null;
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
@@ -70,6 +89,11 @@ export default function InboxPage({ user, onLogout }) {
     window.addEventListener('mouseup', onUp);
     return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
   }, []);
+
+  // Persist whatever the drag settled on.
+  useEffect(() => { localStorage.setItem('bd_list_w', String(listW)); }, [listW]);
+  useEffect(() => { localStorage.setItem('bd_ctx_w', String(ctxW)); }, [ctxW]);
+  useEffect(() => { localStorage.setItem('bd_ctx_open', String(ctxOpen)); }, [ctxOpen]);
 
   const startDrag = useCallback((which, e, currentW) => {
     e.preventDefault();
@@ -80,73 +104,93 @@ export default function InboxPage({ user, onLogout }) {
     document.body.style.userSelect = 'none';
   }, []);
 
-  const handleSelectThread = (id) => {
-    setSelectedThreadId(id);
+  // ⌘\ toggles the context drawer — it's the pane agents hide most often.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === '\\') { e.preventDefault(); setCtxOpen(v => !v); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const openThread = useCallback((id) => {
     updateThreadLocal(id, { is_unread: 0 });
-  };
+    navigate(`/inbox/t/${id}${window.location.search}`);
+  }, [navigate, updateThreadLocal]);
 
-  // Undoing a manual ticket's first email deletes the ticket with it.
+  const closeThread = useCallback(() => {
+    setShowCustomerSheet(false);
+    navigate(`/inbox${window.location.search}`);
+  }, [navigate]);
+
   const handleThreadDeleted = useCallback(() => {
-    setSelectedThreadId(null);
+    closeThread();
     reload();
-  }, [reload]);
+  }, [closeThread, reload]);
 
-  const handleThreadUpdate = useCallback((threadId, updates) => {
-    updateThreadLocal(threadId, updates);
-    if (updates.snoozed_until) {
-      setTimeout(() => removeThreadLocal(threadId), 800);
-    }
+  const handleThreadUpdate = useCallback((id, updates) => {
+    updateThreadLocal(id, updates);
+    if (updates.snoozed_until) setTimeout(() => removeThreadLocal(id), 800);
   }, [updateThreadLocal, removeThreadLocal]);
 
-  // ─────────────────────────────────────────────────────────────
-  // MOBILE — stacked single-screen flow with a bottom tab bar.
-  // Desktop 3-column layout below is left completely untouched.
-  // ─────────────────────────────────────────────────────────────
-  if (isMobile) {
-    const inThread = mobileTab === 'inbox' && !!selectedThreadId;
-    const unreadCount = threads.filter(t => t.is_unread).length;
+  const list = (
+    <Sidebar
+      threads={threads}
+      loading={loading}
+      loadingMore={loadingMore}
+      hasMore={hasMore}
+      syncing={syncing}
+      brands={brands}
+      filters={filters}
+      viewId={viewId}
+      activeChips={activeChips}
+      onRemoveChip={removeChip}
+      onClearFilters={clearAll}
+      onFilterChange={setFilters}
+      onApplyView={applyView}
+      selectedId={selectedThreadId}
+      onSelect={openThread}
+      onSync={() => handleSync(false)}
+      onLoadMore={loadMore}
+      onNewTicket={() => setShowNewTicket(true)}
+    />
+  );
 
+  // ── Mobile: one pane at a time, driven by the same route ───────
+  if (isMobile) {
     return (
       <div className={styles.mobileRoot}>
-        {/* Inbox list (home) */}
-        {mobileTab === 'inbox' && !selectedThreadId && (
-          <Sidebar
-            threads={threads}
-            loading={loading}
-            loadingMore={loadingMore}
-            hasMore={hasMore}
-            syncing={syncing}
-            brands={brands}
-            filters={filters}
-            onFilterChange={setFilters}
-            selectedId={selectedThreadId}
-            onSelect={handleSelectThread}
-            onSync={sync}
-            onFullSync={fullSync}
-            onLoadMore={loadMore}
-            onAnalytics={() => setMobileTab('analytics')}
-            onActionsView={() => setMobileTab('actions')}
-            onNewTicket={() => setShowNewTicket(true)}
-            user={user}
-            onLogout={onLogout}
-          />
-        )}
-
-        {/* Thread view */}
-        {inThread && (
+        {selectedThreadId ? (
           <>
             <ThreadPanel
               threadId={selectedThreadId}
               brands={brands}
               onThreadUpdate={handleThreadUpdate}
-              onBack={() => { setSelectedThreadId(null); setShowCustomerSheet(false); }}
+              onBack={closeThread}
               onOpenCustomer={() => setShowCustomerSheet(true)}
               onThreadDeleted={handleThreadDeleted}
             />
             {showCustomerSheet && (
               <div className={styles.sheetOverlay} onClick={() => setShowCustomerSheet(false)}>
-                <div className={styles.sheet} onClick={e => e.stopPropagation()}>
-                  <div className={styles.sheetGrab} />
+                <div
+                  className={styles.sheet}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Customer details"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className={styles.sheetHead}>
+                    <div className={styles.sheetGrab} />
+                    <button
+                      className={styles.sheetClose}
+                      onClick={() => setShowCustomerSheet(false)}
+                      aria-label="Close customer details"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
                   <div className={styles.sheetBody}>
                     <CustomerPanel threadId={selectedThreadId} />
                   </div>
@@ -154,94 +198,47 @@ export default function InboxPage({ user, onLogout }) {
               </div>
             )}
           </>
+        ) : (
+          <>
+            {list}
+            <button className={styles.fab} onClick={() => setShowNewTicket(true)} aria-label="Raise ticket for customer">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </>
         )}
 
-        {/* Actions tab */}
-        {mobileTab === 'actions' && (
-          <ActionsView
-            onClose={() => setMobileTab('inbox')}
-            sidebarWidth={0}
-            onSelectThread={(threadId) => {
-              setMobileTab('inbox');
-              handleSelectThread(threadId);
-            }}
-          />
-        )}
-
-        {/* Analytics tab */}
-        {mobileTab === 'analytics' && (
-          <Dashboard onClose={() => setMobileTab('inbox')} sidebarWidth={0} user={user} brands={brands} />
-        )}
-
-        {/* Settings tab */}
-        {mobileTab === 'settings' && (
-          <Settings user={user} onClose={() => setMobileTab('inbox')} />
-        )}
-
-        {/* FAB — new ticket (inbox home only) */}
-        {mobileTab === 'inbox' && !selectedThreadId && (
-          <button className={styles.fab} onClick={() => setShowNewTicket(true)} aria-label="New ticket">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </button>
-        )}
-
-        {/* New ticket modal */}
         {showNewTicket && (
           <NewTicketModal
             brands={brands}
             onClose={() => setShowNewTicket(false)}
-            onCreated={(thread) => {
-              setShowNewTicket(false);
-              setMobileTab('inbox');
-              setSelectedThreadId(thread.id);
-              reload();
-            }}
-          />
-        )}
-
-        {/* Bottom nav — hidden while reading a thread to maximize compose space */}
-        {!inThread && (
-          <BottomNav
-            active={mobileTab}
-            onChange={setMobileTab}
-            badges={{ inbox: unreadCount }}
+            onCreated={(thread) => { setShowNewTicket(false); reload(); navigate(`/inbox/t/${thread.id}`); }}
           />
         )}
       </div>
     );
   }
 
-  return (
-    <div className={styles.root} style={{ gridTemplateColumns: `${sidebarW}px 1fr ${customerW}px` }}>
+  // ── Desktop / tablet ───────────────────────────────────────────
+  const showContext = !!selectedThreadId && ctxOpen;
+  const columns = showContext
+    ? `${listW}px minmax(480px, 1fr) ${ctxW}px`
+    : `${listW}px minmax(480px, 1fr)`;
 
-      {/* Sidebar — always visible */}
+  return (
+    <div className={styles.root} style={{ gridTemplateColumns: columns }}>
       <div className={styles.col}>
-        <Sidebar
-          threads={threads}
-          loading={loading}
-          loadingMore={loadingMore}
-          hasMore={hasMore}
-          syncing={syncing}
-          brands={brands}
-          filters={filters}
-          onFilterChange={setFilters}
-          selectedId={selectedThreadId}
-          onSelect={handleSelectThread}
-          onSync={sync}
-          onFullSync={fullSync}
-          onLoadMore={loadMore}
-          onAnalytics={() => setShowAnalytics(true)}
-          onActionsView={() => setShowActionsView(true)}
-          onNewTicket={() => setShowNewTicket(true)}
-          user={user}
-          onLogout={onLogout}
+        {list}
+        <div
+          className={styles.handle}
+          onMouseDown={(e) => startDrag('list', e, listW)}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize ticket list"
         />
-        <div className={styles.handle} onMouseDown={(e) => startDrag('sidebar', e, sidebarW)} />
       </div>
 
-      {/* Thread + Customer columns */}
       {selectedThreadId ? (
         <div className={styles.col} style={{ position: 'relative' }}>
           <ThreadPanel
@@ -249,75 +246,89 @@ export default function InboxPage({ user, onLogout }) {
             brands={brands}
             onThreadUpdate={handleThreadUpdate}
             onThreadDeleted={handleThreadDeleted}
+            contextOpen={ctxOpen}
+            onToggleContext={() => setCtxOpen(v => !v)}
           />
-          <div className={styles.handle} onMouseDown={(e) => startDrag('customer', e, customerW)} />
+          {showContext && (
+            <div
+              className={styles.handle}
+              onMouseDown={(e) => startDrag('ctx', e, ctxW)}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize customer panel"
+            />
+          )}
         </div>
       ) : (
-        <EmptyState loading={loading} threadCount={threads.length} />
+        <EmptyState
+          loading={loading}
+          threadCount={threads.length}
+          hasFilters={activeChips.length > 0}
+          onClearFilters={clearAll}
+        />
       )}
 
-      {selectedThreadId && (
+      {showContext && (
         <div className={styles.col}>
           <CustomerPanel threadId={selectedThreadId} />
         </div>
       )}
 
-      {/* Analytics overlay — covers thread + customer, sidebar stays */}
-      {showAnalytics && (
-        <Dashboard
-          onClose={() => setShowAnalytics(false)}
-          sidebarWidth={sidebarW}
-          user={user}
-          brands={brands}
-        />
-      )}
-
-      {/* Actions consolidated view */}
-      {showActionsView && (
-        <ActionsView
-          onClose={() => setShowActionsView(false)}
-          sidebarWidth={sidebarW}
-          onSelectThread={(threadId) => {
-            setShowActionsView(false);
-            handleSelectThread(threadId);
-          }}
-        />
-      )}
-
-      {/* New ticket modal */}
       {showNewTicket && (
         <NewTicketModal
           brands={brands}
           onClose={() => setShowNewTicket(false)}
-          onCreated={(thread) => {
-            setSelectedThreadId(thread.id);
-            reload();
-          }}
+          onCreated={(thread) => { setShowNewTicket(false); reload(); navigate(`/inbox/t/${thread.id}`); }}
         />
       )}
     </div>
   );
 }
 
-function EmptyState({ loading, threadCount }) {
-  return (
-    <div className={styles.emptyWrap}>
-      {!loading && threadCount === 0 ? (
+function EmptyState({ loading, threadCount, hasFilters, onClearFilters }) {
+  if (loading) return <div className={styles.emptyWrap} />;
+
+  // "Nothing matches your filters" and "you're all caught up" used to render
+  // the same grey sentence. One is a mistake to fix, the other is good news.
+  if (threadCount === 0 && hasFilters) {
+    return (
+      <div className={styles.emptyWrap}>
         <div className={styles.empty}>
-          <div className={styles.emptyIcon}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          <p className={styles.emptyTitle}>No tickets match these filters</p>
+          <p className={styles.emptySub}>Nothing in the inbox fits the current narrowing.</p>
+          <button className={styles.emptyAction} onClick={onClearFilters}>Clear all filters</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (threadCount === 0) {
+    return (
+      <div className={styles.emptyWrap}>
+        <div className={styles.empty}>
+          <div className={`${styles.emptyIcon} ${styles.emptyIconGood}`}>
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 6L9 17l-5-5" />
             </svg>
           </div>
-          <p className={styles.emptyTitle}>No tickets found</p>
-          <p className={styles.emptySub}>Adjust your filters or sync to fetch new emails</p>
+          <p className={styles.emptyTitle}>All caught up</p>
+          <p className={styles.emptySub}>No open tickets right now. New email appears here automatically.</p>
         </div>
-      ) : (
-        <div className={styles.empty}>
-          <p className={styles.emptyTitle}>Select a conversation</p>
-          <p className={styles.emptySub}>Pick a ticket from the inbox to view the thread</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.emptyWrap}>
+      <div className={styles.empty}>
+        <div className={styles.emptyIcon}>
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          </svg>
         </div>
-      )}
+        <p className={styles.emptyTitle}>Select a conversation</p>
+        <p className={styles.emptySub}>Pick a ticket from the list to view the thread.</p>
+      </div>
     </div>
   );
 }

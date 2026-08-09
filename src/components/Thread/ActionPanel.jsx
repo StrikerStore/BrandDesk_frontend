@@ -1,24 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchThreadActions, updateThreadAction, closeThreadAction } from '../../utils/api.js';
+import { fetchThreadActions, updateThreadAction, closeThreadAction, errorMessage } from '../../utils/api.js';
+import { TYPE_LABELS, TYPE_COLORS } from '../../utils/actionTypes.js';
+import { useToast } from '../../ui/ToastProvider.jsx';
+import ConfirmDialog from '../../ui/ConfirmDialog.jsx';
 import styles from './ActionPanel.module.css';
-
-const TYPE_LABELS = {
-  exchange: '🔄 Exchange',
-  return: '↩ Return',
-  alternate_product: '🔁 Alternate Product',
-  refund: '💰 Refund',
-  change_size: '📏 Change Size',
-  change_address: '📍 Change Address',
-};
-
-const TYPE_COLORS = {
-  exchange: { bg: '#eff6ff', color: '#1d4ed8', border: '#93c5fd' },
-  return: { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
-  alternate_product: { bg: '#f0fdf4', color: '#15803d', border: '#86efac' },
-  refund: { bg: '#f5f3ff', color: '#6d28d9', border: '#c4b5fd' },
-  change_size: { bg: '#ecfeff', color: '#0e7490', border: '#67e8f9' },
-  change_address: { bg: '#fdf2f8', color: '#be185d', border: '#f9a8d4' },
-};
 
 function formatDateTime(val) {
   if (!val) return '';
@@ -35,9 +20,12 @@ const firstOpenIdx = (list) => {
 };
 
 export default function ActionPanel({ threadId, onCountChange, onActionsChange }) {
+  const toast = useToast();
   const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [loadError, setLoadError] = useState(null);
+  const [confirmClose, setConfirmClose] = useState(null);
 
   const load = useCallback(async () => {
     if (!threadId) return;
@@ -49,8 +37,11 @@ export default function ActionPanel({ threadId, onCountChange, onActionsChange }
       setActiveIdx(firstOpenIdx(list));
       onCountChange?.(list.length);
       onActionsChange?.(list);
+      setLoadError(null);
     } catch (err) {
-      console.error('Fetch actions error:', err.message);
+      // Was console-only, so a failed fetch rendered the "No actions logged
+      // yet" empty state — actively misleading on a ticket that has some.
+      setLoadError(errorMessage(err, 'Failed to load actions'));
     } finally {
       setLoading(false);
     }
@@ -63,22 +54,23 @@ export default function ActionPanel({ threadId, onCountChange, onActionsChange }
     try {
       await updateThreadAction(threadId, actionId, { [field]: value });
     } catch (err) {
-      console.error('Update action field error:', err.message);
       load(); // revert on failure
+      toast.error("Couldn't save that change", { detail: errorMessage(err) });
     }
   };
 
-  const handleClose = async (actionId) => {
-    if (!window.confirm('Close this action? This cannot be undone.')) return;
+  const handleCloseConfirmed = async (action) => {
     try {
-      const { data } = await closeThreadAction(threadId, actionId);
+      const { data } = await closeThreadAction(threadId, action.id);
       setActions(prev => {
-        const next = prev.map(a => a.id === actionId ? data.action : a);
+        const next = prev.map(a => a.id === action.id ? data.action : a);
         onActionsChange?.(next);
         return next;
       });
+      setConfirmClose(null);
+      toast.success(`${TYPE_LABELS[action.action_type]} closed`);
     } catch (err) {
-      console.error('Close action error:', err.message);
+      toast.error("Couldn't close this action", { detail: errorMessage(err) });
     }
   };
 
@@ -88,6 +80,18 @@ export default function ActionPanel({ threadId, onCountChange, onActionsChange }
         <div className={styles.loading}>
           <span className={styles.spinner} />
           Loading actions…
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className={styles.root}>
+        <div className={styles.empty} role="alert">
+          <p className={styles.emptyTitle}>Couldn’t load actions</p>
+          <p className={styles.emptySub}>{loadError}</p>
+          <button className={styles.editBtn} onClick={load} style={{ marginTop: 10 }}>Retry</button>
         </div>
       </div>
     );
@@ -144,13 +148,24 @@ export default function ActionPanel({ threadId, onCountChange, onActionsChange }
         key={current.id}
         action={current}
         onFieldUpdate={handleFieldUpdate}
-        onClose={handleClose}
+        onCloseAction={setConfirmClose}
       />
+
+      {confirmClose && (
+        <ConfirmDialog
+          title="Close this action?"
+          message={`${TYPE_LABELS[confirmClose.action_type]} on this ticket.`}
+          consequence="Closing is permanent — the checklist and fields become read-only and cannot be reopened."
+          confirmLabel="Close action"
+          onConfirm={() => handleCloseConfirmed(confirmClose)}
+          onCancel={() => setConfirmClose(null)}
+        />
+      )}
     </div>
   );
 }
 
-function ActionCard({ action, onFieldUpdate, onClose }) {
+function ActionCard({ action, onFieldUpdate, onCloseAction }) {
   const typeColor = TYPE_COLORS[action.action_type] || { bg: '#f9fafb', color: '#374151', border: '#e5e7eb' };
   const isClosed = !!action.is_closed;
 
@@ -177,7 +192,7 @@ function ActionCard({ action, onFieldUpdate, onClose }) {
             <span className={styles.closedAt}>Closed {formatDateTime(action.closed_at)}</span>
           )
         ) : (
-          <button className={styles.closeActionBtn} onClick={() => onClose(action.id)}>
+          <button className={styles.closeActionBtn} onClick={() => onCloseAction(action)}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M20 6L9 17l-5-5"/>
             </svg>

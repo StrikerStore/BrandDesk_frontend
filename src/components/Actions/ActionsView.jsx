@@ -1,63 +1,52 @@
-import { useState, useEffect, useCallback } from 'react';
-import { fetchAllActions, updateAction, closeAction } from '../../utils/api.js';
-import { getBrandColor, displayOrderId } from '../../utils/helpers.js';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { fetchAllActions, updateAction, closeAction, errorMessage } from '../../utils/api.js';
+import { getBrandColor, displayOrderId, formatTime } from '../../utils/helpers.js';
+import { ACTION_TYPES, TYPE_LABELS, TYPE_COLORS, schemaFor, progressOf } from '../../utils/actionTypes.js';
+import { useToast } from '../../ui/ToastProvider.jsx';
+import ConfirmDialog from '../../ui/ConfirmDialog.jsx';
+import Icon from '../../ui/Icon.jsx';
+import ActionDetail from './ActionDetail.jsx';
 import styles from './ActionsView.module.css';
 
-const TYPE_LABELS = {
-  exchange:          '🔄 Exchange',
-  return:            '↩ Return',
-  alternate_product: '🔁 Alternate Product',
-  refund:            '💰 Refund',
-  change_size:       '📏 Change Size',
-  change_address:    '📍 Change Address',
-};
-
-const TYPE_COLORS = {
-  exchange:          { bg: '#eff6ff', color: '#1d4ed8', border: '#93c5fd' },
-  return:            { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
-  alternate_product: { bg: '#f0fdf4', color: '#15803d', border: '#86efac' },
-  refund:            { bg: '#f5f3ff', color: '#6d28d9', border: '#c4b5fd' },
-  change_size:       { bg: '#ecfeff', color: '#0e7490', border: '#67e8f9' },
-  change_address:    { bg: '#fdf2f8', color: '#be185d', border: '#f9a8d4' },
-};
-
-const STATUS_FILTER_OPTIONS = [
+const STATUS_FILTERS = [
   { value: 'open',   label: 'Open' },
   { value: 'closed', label: 'Closed' },
   { value: '',       label: 'All' },
 ];
 
-const TYPE_FILTER_OPTIONS = [
-  { value: '',                  label: 'All types' },
-  { value: 'exchange',          label: 'Exchange' },
-  { value: 'return',            label: 'Return' },
-  { value: 'alternate_product', label: 'Alternate Product' },
-  { value: 'refund',            label: 'Refund' },
-  { value: 'change_size',       label: 'Change Size' },
-  { value: 'change_address',    label: 'Change Address' },
-];
+const SORTS = {
+  age:      (a, b) => new Date(b.created_at) - new Date(a.created_at),
+  oldest:   (a, b) => new Date(a.created_at) - new Date(b.created_at),
+  type:     (a, b) => (TYPE_LABELS[a.action_type] || '').localeCompare(TYPE_LABELS[b.action_type] || ''),
+  progress: (a, b) => progressOf(a).pct - progressOf(b).pct,
+};
 
-function formatDate(val) {
-  if (!val) return '—';
-  return new Date(val).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-}
+const daysSince = (d) => Math.floor((Date.now() - new Date(d)) / 86400000);
 
-export default function ActionsView({ onClose, sidebarWidth, onSelectThread }) {
-  const [actions, setActions]       = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [statusFilter, setStatus]   = useState('open');
-  const [typeFilter, setType]       = useState('');
+export default function ActionsView({ onSelectThread }) {
+  const toast = useToast();
+  const [actions, setActions]     = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [statusFilter, setStatus] = useState('open');
+  const [typeFilter, setType]     = useState('');
+  const [sort, setSort]           = useState('age');
+  const [selected, setSelected]   = useState(() => new Set());
+  const [detailId, setDetailId]   = useState(null);
+  const [confirmClose, setConfirmClose] = useState(null);   // one action, or 'bulk'
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const params = {};
       if (statusFilter) params.status = statusFilter;
       if (typeFilter)   params.type   = typeFilter;
       const { data } = await fetchAllActions(params);
       setActions(data.actions || []);
+      setSelected(new Set());
     } catch (err) {
-      console.error('Fetch all actions error:', err.message);
+      setLoadError(errorMessage(err, 'Failed to load actions'));
     } finally {
       setLoading(false);
     }
@@ -65,427 +54,284 @@ export default function ActionsView({ onClose, sidebarWidth, onSelectThread }) {
 
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    const handler = (e) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
+  const rows = useMemo(() => [...actions].sort(SORTS[sort] || SORTS.age), [actions, sort]);
+  const detail = actions.find(a => a.id === detailId) || null;
 
-  const handleFieldUpdate = async (actionId, field, value) => {
+  // Single save path for every field. The old table had two: checkboxes wrote
+  // immediately, text fields needed an explicit Save button, and nothing on
+  // screen said which was which.
+  const saveField = useCallback(async (actionId, field, value) => {
+    const previous = actions.find(a => a.id === actionId)?.[field];
     setActions(prev => prev.map(a => a.id === actionId ? { ...a, [field]: value } : a));
     try {
       await updateAction(actionId, { [field]: value });
+      return true;
     } catch (err) {
-      console.error('Update action error:', err.message);
+      setActions(prev => prev.map(a => a.id === actionId ? { ...a, [field]: previous } : a));
+      toast.error("Couldn't save that change", { detail: errorMessage(err) });
+      return false;
+    }
+  }, [actions, toast]);
+
+  const closeOne = async (action) => {
+    const { data } = await closeAction(action.id);
+    setActions(prev => prev.map(a => a.id === action.id ? data.action : a));
+  };
+
+  const handleCloseConfirmed = async () => {
+    const targets = confirmClose === 'bulk'
+      ? actions.filter(a => selected.has(a.id) && !a.is_closed)
+      : [confirmClose];
+    try {
+      for (const a of targets) await closeOne(a);
+      setConfirmClose(null);
+      setSelected(new Set());
+      toast.success(targets.length === 1
+        ? `${TYPE_LABELS[targets[0].action_type]} closed`
+        : `${targets.length} actions closed`);
+    } catch (err) {
+      toast.error("Couldn't close everything", { detail: errorMessage(err) });
       load();
     }
   };
 
-  const handleClose = async (actionId) => {
-    if (!window.confirm('Close this action? This cannot be undone.')) return;
-    try {
-      const { data } = await closeAction(actionId);
-      setActions(prev => prev.map(a => a.id === actionId ? data.action : a));
-    } catch (err) {
-      console.error('Close action error:', err.message);
-    }
-  };
+  const toggleSel = (id) => setSelected(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
 
-  const openCount   = actions.filter(a => !a.is_closed).length;
-  const closedCount = actions.filter(a =>  a.is_closed).length;
+  const openRows      = rows.filter(a => !a.is_closed);
+  const allOpenPicked = openRows.length > 0 && openRows.every(a => selected.has(a.id));
+  const selectedOpen  = actions.filter(a => selected.has(a.id) && !a.is_closed);
+  const openCount     = actions.filter(a => !a.is_closed).length;
+  const closedCount   = actions.filter(a =>  a.is_closed).length;
 
   return (
-    <div className={styles.root} style={{ left: sidebarWidth || 0 }}>
-      {/* Header */}
+    <div className={styles.root}>
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <h1 className={styles.title}>Actions</h1>
           <div className={styles.summaryBadges}>
-            <span className={styles.summaryBadge} style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fcd34d' }}>
-              {openCount} open
-            </span>
-            <span className={styles.summaryBadge} style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac' }}>
-              {closedCount} closed
-            </span>
+            <span className={`${styles.summaryBadge} ${styles.badgeOpen}`}>{openCount} open</span>
+            <span className={`${styles.summaryBadge} ${styles.badgeClosed}`}>{closedCount} closed</span>
           </div>
         </div>
         <div className={styles.headerRight}>
-          {/* Status filter */}
-          <div className={styles.filterGroup}>
-            {STATUS_FILTER_OPTIONS.map(opt => (
+          <div className={styles.filterGroup} role="group" aria-label="Status filter">
+            {STATUS_FILTERS.map(opt => (
               <button
                 key={opt.value}
                 className={`${styles.filterBtn} ${statusFilter === opt.value ? styles.filterBtnActive : ''}`}
                 onClick={() => setStatus(opt.value)}
+                aria-pressed={statusFilter === opt.value}
               >{opt.label}</button>
             ))}
           </div>
-          {/* Type filter */}
-          <select
-            className={styles.typeSelect}
-            value={typeFilter}
-            onChange={e => setType(e.target.value)}
-          >
-            {TYPE_FILTER_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
+          <label className="sr-only" htmlFor="action-sort">Sort by</label>
+          <select id="action-sort" className={styles.typeSelect} value={sort} onChange={e => setSort(e.target.value)}>
+            <option value="age">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="progress">Least progress</option>
+            <option value="type">Type</option>
           </select>
-          <button className={styles.closeBtn} onClick={onClose} title="Close (Esc)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-            Close
-          </button>
         </div>
       </div>
 
-      {/* Body */}
-      {loading ? (
-        <div className={styles.loadingState}>
-          <div className={styles.spinner} />
-          <span>Loading actions…</span>
+      {/* Type filter as chips — a <select> hid which types even exist. */}
+      <div className={styles.typeChips}>
+        <button
+          className={`${styles.typeChip} ${!typeFilter ? styles.typeChipActive : ''}`}
+          onClick={() => setType('')}
+          aria-pressed={!typeFilter}
+        >All types</button>
+        {ACTION_TYPES.map(t => {
+          const on = typeFilter === t.id;
+          return (
+            <button
+              key={t.id}
+              className={`${styles.typeChip} ${on ? styles.typeChipActive : ''}`}
+              style={on ? { background: t.color.bg, color: t.color.color, borderColor: t.color.border } : undefined}
+              onClick={() => setType(on ? '' : t.id)}
+              aria-pressed={on}
+            >{t.label}</button>
+          );
+        })}
+      </div>
+
+      {/* Bulk bar — appears only with a selection */}
+      {selectedOpen.length > 0 && (
+        <div className={styles.bulkBar} role="status">
+          <span className={styles.bulkCount}>{selectedOpen.length} selected</span>
+          <button className={styles.bulkBtn} onClick={() => setConfirmClose('bulk')}>
+            <Icon name="check" size={13} /> Close selected
+          </button>
+          <button className={styles.bulkClear} onClick={() => setSelected(new Set())}>Clear</button>
         </div>
-      ) : actions.length === 0 ? (
+      )}
+
+      {loading ? (
+        <div className={styles.skeletonWrap}>
+          {[1, 2, 3, 4, 5].map(i => <div key={i} className={styles.skeletonRow} />)}
+        </div>
+      ) : loadError ? (
+        <div className={styles.emptyState} role="alert">
+          <p className={styles.emptyTitle}>Couldn’t load actions</p>
+          <p className={styles.emptySub}>{loadError}</p>
+          <button className={styles.filterBtn} onClick={load} style={{ marginTop: 12 }}>Retry</button>
+        </div>
+      ) : rows.length === 0 ? (
         <div className={styles.emptyState}>
-          <div className={styles.emptyIcon}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
-              <rect x="9" y="3" width="6" height="4" rx="1"/>
-              <path d="M9 12h6M9 16h4"/>
-            </svg>
-          </div>
-          <p className={styles.emptyTitle}>No actions found</p>
-          <p className={styles.emptySub}>
-            Log an exchange, return, or alternate product from within any ticket using the Action button.
+          <div className={styles.emptyIcon}><Icon name="package" size={30} strokeWidth={1.4} /></div>
+          <p className={styles.emptyTitle}>
+            {statusFilter === 'open' ? 'No open actions' : 'No actions found'}
           </p>
+          <p className={styles.emptySub}>
+            {statusFilter === 'open'
+              ? 'Everything logged has been closed out.'
+              : 'Log an exchange, return or refund from inside any ticket.'}
+          </p>
+          {(typeFilter || statusFilter !== 'open') && (
+            <button className={styles.filterBtn} style={{ marginTop: 12 }}
+              onClick={() => { setType(''); setStatus('open'); }}>Reset filters</button>
+          )}
         </div>
       ) : (
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
               <tr>
+                <th className={styles.selCell}>
+                  <input
+                    type="checkbox"
+                    className={styles.nativeCheck}
+                    checked={allOpenPicked}
+                    onChange={() => setSelected(allOpenPicked ? new Set() : new Set(openRows.map(a => a.id)))}
+                    aria-label="Select all open actions"
+                  />
+                </th>
                 <th>Ticket</th>
                 <th>Type</th>
-                <th>Jerseys</th>
-                <th>Status checklist</th>
-                <th>IDs / notes</th>
-                <th>Logged</th>
-                <th></th>
+                <th>Progress</th>
+                <th>Age</th>
+                <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {actions.map(action => (
+              {rows.map(action => (
                 <ActionRow
                   key={action.id}
                   action={action}
-                  onFieldUpdate={handleFieldUpdate}
-                  onClose={handleClose}
-                  onSelectThread={onSelectThread}
+                  selected={selected.has(action.id)}
+                  active={action.id === detailId}
+                  onToggleSel={() => toggleSel(action.id)}
+                  onOpen={() => setDetailId(action.id)}
                 />
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      {/* Detail panel — the checklist and every editable field live here, so a
+          table row no longer has to host six nested mini-forms. */}
+      {detail && (
+        <ActionDetail
+          action={detail}
+          onClose={() => setDetailId(null)}
+          onSaveField={saveField}
+          onCloseAction={() => setConfirmClose(detail)}
+          onOpenTicket={() => { setDetailId(null); onSelectThread(detail.thread_id); }}
+        />
+      )}
+
+      {confirmClose && (
+        <ConfirmDialog
+          title={confirmClose === 'bulk' ? `Close ${selectedOpen.length} actions?` : 'Close this action?'}
+          message={confirmClose === 'bulk'
+            ? selectedOpen.map(a => TYPE_LABELS[a.action_type]).join(', ')
+            : `${TYPE_LABELS[confirmClose.action_type]} for ${confirmClose.ticket_id || 'this ticket'}.`}
+          consequence="Closing is permanent — the checklist and fields become read-only and cannot be reopened."
+          confirmLabel={confirmClose === 'bulk' ? 'Close all' : 'Close action'}
+          onConfirm={handleCloseConfirmed}
+          onCancel={() => setConfirmClose(null)}
+        />
+      )}
     </div>
   );
 }
 
-// ── Action row ───────────────────────────────────────────────────────────────
-
-function ActionRow({ action, onFieldUpdate, onClose, onSelectThread }) {
+function ActionRow({ action, selected, active, onToggleSel, onOpen }) {
   const isClosed   = !!action.is_closed;
   const typeColor  = TYPE_COLORS[action.action_type] || {};
   const brandColor = getBrandColor(action.brand || '');
+  const { done, total } = progressOf(action);
+  const age = daysSince(action.created_at);
 
-  const rawName    = action.customer_name || '';
-  const isStore    = rawName.toLowerCase().includes('shopify') || rawName.toLowerCase().includes(' store');
+  const rawName     = action.customer_name || '';
+  const isStore     = rawName.toLowerCase().includes('shopify') || rawName.toLowerCase().includes(' store');
   const displayName = (!rawName || isStore) ? (action.customer_email || 'Customer') : rawName;
 
   return (
-    <tr className={`${styles.row} ${isClosed ? styles.rowClosed : ''}`}>
-      {/* Ticket cell */}
-      <td className={styles.ticketCell}>
-        <button
-          className={styles.ticketLink}
-          onClick={() => onSelectThread(action.thread_id)}
-          title="Open ticket"
-        >
+    <tr className={`${styles.row} ${isClosed ? styles.rowClosed : ''} ${active ? styles.rowActive : ''}`}>
+      <td className={styles.selCell}>
+        <input
+          type="checkbox"
+          className={styles.nativeCheck}
+          checked={selected}
+          disabled={isClosed}
+          onChange={onToggleSel}
+          aria-label={`Select ${TYPE_LABELS[action.action_type]} for ${displayName}`}
+        />
+      </td>
+
+      <td>
+        <button className={styles.rowOpen} onClick={onOpen} data-focus-inset>
           <span className={styles.ticketName}>{displayName}</span>
-          {action.ticket_id && <span className={styles.ticketId}>{action.ticket_id}</span>}
-          {action.order_number && <span className={styles.orderNum}>#{displayOrderId(action.order_number)}</span>}
-          <span className={styles.brandTag} style={{ background: brandColor.bg, color: brandColor.text }}>
-            {action.brand}
+          <span className={styles.rowMeta}>
+            {action.ticket_id && <span className={styles.ticketId}>{action.ticket_id}</span>}
+            {action.order_number && <span className={styles.orderNum}>#{displayOrderId(action.order_number)}</span>}
+            <span className={styles.brandTag} style={{ background: brandColor.bg, color: brandColor.text }}>
+              {action.brand}
+            </span>
           </span>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={styles.linkArrow}>
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
         </button>
       </td>
 
-      {/* Type */}
       <td>
-        <span
-          className={styles.typeBadge}
-          style={{ background: typeColor.bg, color: typeColor.color, borderColor: typeColor.border }}
-        >
+        <span className={styles.typeBadge}
+          style={{ background: typeColor.bg, color: typeColor.color, borderColor: typeColor.border }}>
           {TYPE_LABELS[action.action_type]}
         </span>
-        {isClosed && <div className={styles.closedPill}>Closed</div>}
       </td>
 
-      {/* Jerseys */}
-      <td className={styles.jerseyCell}>
-        {['exchange', 'return', 'alternate_product'].includes(action.action_type) && (
-          <EditableJersey label="Pickup" value={action.pickup_jersey} disabled={isClosed}
-            onSave={v => onFieldUpdate(action.id, 'pickup_jersey', v)} />
-        )}
-        {action.action_type === 'exchange' && (
-          <EditableJersey label="Exchange" value={action.exchange_jersey} disabled={isClosed}
-            onSave={v => onFieldUpdate(action.id, 'exchange_jersey', v)} />
-        )}
-        {action.action_type === 'alternate_product' && (
-          <EditableJersey label="Alternate" value={action.alternate_jersey} disabled={isClosed}
-            onSave={v => onFieldUpdate(action.id, 'alternate_jersey', v)} />
-        )}
-        {action.action_type === 'change_size' && (
-          <>
-            <EditableJersey label="Current" value={action.current_jersey} disabled={isClosed}
-              onSave={v => onFieldUpdate(action.id, 'current_jersey', v)} />
-            <EditableJersey label="New" value={action.new_jersey} disabled={isClosed}
-              onSave={v => onFieldUpdate(action.id, 'new_jersey', v)} />
-          </>
-        )}
-        {action.action_type === 'change_address' && (
-          <EditableJersey label="Address" value={action.new_address} disabled={isClosed}
-            onSave={v => onFieldUpdate(action.id, 'new_address', v)} />
-        )}
-        {action.action_type === 'refund' && (
-          <EditableJersey label="Jersey" value={action.pickup_jersey} disabled={isClosed}
-            onSave={v => onFieldUpdate(action.id, 'pickup_jersey', v)} />
-        )}
-      </td>
-
-      {/* Status checklist */}
-      <td className={styles.checklistCell}>
-        {action.action_type === 'exchange' && (
-          <>
-            <CheckItem label="Pickup done"    checked={!!action.exchange_pickup_done} disabled={isClosed}
-              onChange={v => onFieldUpdate(action.id, 'exchange_pickup_done', v ? 1 : 0)} />
-            <CheckItem label="Packed"         checked={!!action.exchange_packed}      disabled={isClosed}
-              onChange={v => onFieldUpdate(action.id, 'exchange_packed', v ? 1 : 0)} />
-          </>
-        )}
-        {action.action_type === 'return' && (
-          <>
-            <CheckItem label="Return created"  checked={!!action.return_created}  disabled={isClosed}
-              onChange={v => onFieldUpdate(action.id, 'return_created', v ? 1 : 0)} />
-            <CheckItem label="Return received" checked={!!action.return_received} disabled={isClosed}
-              onChange={v => onFieldUpdate(action.id, 'return_received', v ? 1 : 0)} />
-            <CheckItem label="Refund done"     checked={!!action.refund_done}     disabled={isClosed}
-              onChange={v => onFieldUpdate(action.id, 'refund_done', v ? 1 : 0)} />
-          </>
-        )}
-        {action.action_type === 'alternate_product' && (
-          <>
-            <CheckItem label="Alt order created"    checked={!!action.alt_order_created}        disabled={isClosed}
-              onChange={v => onFieldUpdate(action.id, 'alt_order_created', v ? 1 : 0)} />
-            <CheckItem label="Original cancelled"   checked={!!action.original_order_cancelled} disabled={isClosed}
-              onChange={v => onFieldUpdate(action.id, 'original_order_cancelled', v ? 1 : 0)} />
-          </>
-        )}
-        {action.action_type === 'refund' && (
-          <CheckItem label="Refund done" checked={!!action.refund_done} disabled={isClosed}
-            onChange={v => onFieldUpdate(action.id, 'refund_done', v ? 1 : 0)} />
-        )}
-        {action.action_type === 'change_size' && (
-          <CheckItem label="Size changed" checked={!!action.size_change_done} disabled={isClosed}
-            onChange={v => onFieldUpdate(action.id, 'size_change_done', v ? 1 : 0)} />
-        )}
-        {action.action_type === 'change_address' && (
-          <CheckItem label="Address updated" checked={!!action.address_change_done} disabled={isClosed}
-            onChange={v => onFieldUpdate(action.id, 'address_change_done', v ? 1 : 0)} />
-        )}
-      </td>
-
-      {/* IDs / notes */}
-      <td className={styles.idsCell}>
-        {action.action_type === 'exchange' && (
-          <EditableField
-            label="Exchange Order ID"
-            value={action.exchange_order_id}
-            disabled={isClosed}
-            mono
-            onSave={v => onFieldUpdate(action.id, 'exchange_order_id', v || null)}
-          />
-        )}
-        {action.action_type === 'return' && (
-          <>
-            <EditableField
-              label="Refund ID"
-              value={action.refund_id}
-              disabled={isClosed}
-              mono
-              onSave={v => onFieldUpdate(action.id, 'refund_id', v || null)}
+      {/* Progress replaces the inline checklist — the detail panel owns the
+          individual boxes; the table only needs "how far along is this". */}
+      <td>
+        <span className={styles.progressWrap} title={`${done} of ${total} steps done`}>
+          <span className={styles.progressTrack}>
+            <span
+              className={`${styles.progressFill} ${done === total ? styles.progressDone : ''}`}
+              style={{ width: `${total ? (done / total) * 100 : 0}%` }}
             />
-            <EditableField
-              label="Refund time"
-              value={action.refund_time}
-              disabled={isClosed}
-              onSave={v => onFieldUpdate(action.id, 'refund_time', v || null)}
-            />
-          </>
-        )}
-        {['alternate_product', 'change_size', 'change_address'].includes(action.action_type) && (
-          <span className={styles.noIds}>—</span>
-        )}
-        {action.action_type === 'refund' && (
-          <>
-            <EditableField
-              label="Refund ID"
-              value={action.refund_id}
-              disabled={isClosed}
-              mono
-              onSave={v => onFieldUpdate(action.id, 'refund_id', v || null)}
-            />
-            <EditableField
-              label="Refund date"
-              value={action.refund_time}
-              disabled={isClosed}
-              onSave={v => onFieldUpdate(action.id, 'refund_time', v || null)}
-            />
-          </>
-        )}
+          </span>
+          <span className={styles.progressText}>{done}/{total}</span>
+        </span>
       </td>
 
-      {/* Logged date */}
-      <td className={styles.dateCell}>
-        {formatDate(action.created_at)}
-        {isClosed && action.closed_at && (
-          <div className={styles.closedDate}>Closed {formatDate(action.closed_at)}</div>
-        )}
+      <td className={styles.ageCell}>
+        {/* Age is what makes a stalled action visible; the old table only had
+            the logged date. */}
+        <span className={!isClosed && age >= 7 ? styles.ageStale : undefined}>
+          {age === 0 ? 'Today' : `${age}d`}
+        </span>
       </td>
 
-      {/* Actions */}
-      <td className={styles.actionsCell}>
-        {!isClosed && (
-          <button className={styles.closeActionBtn} onClick={() => onClose(action.id)} title="Mark as closed">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M20 6L9 17l-5-5"/>
-            </svg>
-            Close
-          </button>
-        )}
+      <td>
+        {isClosed
+          ? <span className={styles.closedPill}>Closed</span>
+          : <span className={styles.openPill}>Open</span>}
       </td>
     </tr>
-  );
-}
-
-// ── Inline checkbox ──────────────────────────────────────────────────────────
-
-function CheckItem({ label, checked, onChange, disabled }) {
-  return (
-    <label className={`${styles.checkItem} ${disabled ? styles.checkItemDisabled : ''}`}>
-      <span className={`${styles.checkbox} ${checked ? styles.checkboxChecked : ''}`}>
-        {checked && (
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5">
-            <path d="M20 6L9 17l-5-5"/>
-          </svg>
-        )}
-      </span>
-      <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)}
-        disabled={disabled} style={{ display: 'none' }} />
-      <span className={`${styles.checkLabel} ${checked ? styles.checkLabelDone : ''}`}>{label}</span>
-    </label>
-  );
-}
-
-// ── Inline editable jersey / address (multiline) ─────────────────────────────
-
-function EditableJersey({ label, value, onSave, disabled }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft]     = useState(value || '');
-
-  const commit = () => { onSave(draft.trim() || null); setEditing(false); };
-
-  if (editing) {
-    return (
-      <div className={styles.jerseyEdit}>
-        <span className={styles.jerseyLabel}>{label}</span>
-        <textarea
-          autoFocus
-          className={styles.jerseyTextarea}
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) commit();
-            if (e.key === 'Escape') setEditing(false);
-          }}
-          rows={2}
-          placeholder={label}
-        />
-        <div className={styles.jerseyEditBtns}>
-          <button className={styles.inlineSave} onClick={commit}>Save</button>
-          <button className={styles.inlineCancel} onClick={() => setEditing(false)}>✕</button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.jerseyItem}>
-      <span className={styles.jerseyLabel}>{label}</span>
-      {value
-        ? <span className={styles.jerseyValue} style={{ whiteSpace: 'pre-line' }}>{value}</span>
-        : <span className={styles.noIds}>—</span>}
-      {!disabled && (
-        <button className={styles.editFieldBtn} onClick={() => { setDraft(value || ''); setEditing(true); }}>
-          {value ? 'Edit' : '+ Add'}
-        </button>
-      )}
-    </div>
-  );
-}
-
-// ── Inline editable field ────────────────────────────────────────────────────
-
-function EditableField({ label, value, onSave, disabled, mono }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft]     = useState(value || '');
-
-  const commit = () => { onSave(draft.trim()); setEditing(false); };
-
-  if (editing) {
-    return (
-      <div className={styles.inlineEdit}>
-        <span className={styles.inlineLabel}>{label}</span>
-        <input
-          autoFocus
-          className={`${styles.inlineInput} ${mono ? styles.inlineInputMono : ''}`}
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false); }}
-          placeholder={label}
-        />
-        <button className={styles.inlineSave} onClick={commit}>Save</button>
-        <button className={styles.inlineCancel} onClick={() => setEditing(false)}>✕</button>
-      </div>
-    );
-  }
-
-  return (
-    <div className={styles.fieldRow}>
-      <span className={styles.fieldRowLabel}>{label}</span>
-      {value ? (
-        <span className={`${styles.fieldRowValue} ${mono ? styles.fieldRowMono : ''}`}>{value}</span>
-      ) : (
-        !disabled && (
-          <button className={styles.addFieldBtn} onClick={() => { setDraft(''); setEditing(true); }}>+ Add</button>
-        )
-      )}
-      {value && !disabled && (
-        <button className={styles.editFieldBtn} onClick={() => { setDraft(value); setEditing(true); }}>Edit</button>
-      )}
-    </div>
   );
 }

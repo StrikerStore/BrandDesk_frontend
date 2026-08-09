@@ -1,8 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchCustomer, updateCustomerNotes, createCustomer, fetchThread } from '../../utils/api.js';
-import { getInitials, getBrandColor, displayOrderId } from '../../utils/helpers.js';
+import { fetchCustomer, updateCustomerNotes, createCustomer, fetchThread, errorMessage } from '../../utils/api.js';
+import { getInitials, getBrandColor, displayOrderId, truncate } from '../../utils/helpers.js';
+import { useToast } from '../../ui/ToastProvider.jsx';
+import AccordionSection from '../../ui/Accordion.jsx';
 import OrderPanel from '../Order/OrderPanel.jsx';
 import styles from './CustomerPanel.module.css';
+
+// Which sections an agent keeps open is a durable preference. Order is open by
+// default because most tickets are about one — the panel used to be a single
+// unbounded scroll where order details sat two scrolls down.
+const DEFAULT_OPEN = { order: true, contact: false, ticket: false, history: false, notes: false };
+
+function readOpenState() {
+  try {
+    return { ...DEFAULT_OPEN, ...JSON.parse(localStorage.getItem('bd_ctx_sections') || '{}') };
+  } catch {
+    return DEFAULT_OPEN;
+  }
+}
 
 function maskPhone(phone) {
   if (!phone) return null;
@@ -12,18 +27,29 @@ function maskPhone(phone) {
 }
 
 export default function CustomerPanel({ threadId }) {
+  const toast = useToast();
   const [thread, setThread] = useState(null);
   const [customer, setCustomer] = useState(null);
   const [pastTickets, setPastTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [notes, setNotes] = useState('');
   const [notesSaved, setNotesSaved] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: '', phone: '', location: '' });
+  const [openSections, setOpenSections] = useState(readOpenState);
+
+  const isOpen = (key) => !!openSections[key];
+  const toggle = (key) => setOpenSections(prev => {
+    const next = { ...prev, [key]: !prev[key] };
+    localStorage.setItem('bd_ctx_sections', JSON.stringify(next));
+    return next;
+  });
 
   const load = useCallback(async () => {
     if (!threadId) return;
     setLoading(true);
+    setLoadError(null);
     try {
       const { data: threadData } = await fetchThread(threadId);
       const t = threadData.thread;
@@ -33,7 +59,9 @@ export default function CustomerPanel({ threadId }) {
       setPastTickets(data.pastTickets || []);
       setNotes(data.customer?.notes || '');
     } catch (err) {
-      console.error('Customer load error:', err.message);
+      // Previously console-only, so a failed load rendered as a customer with
+      // no phone, no orders and no history — indistinguishable from a new one.
+      setLoadError(errorMessage(err, 'Failed to load customer'));
     } finally {
       setLoading(false);
     }
@@ -41,18 +69,29 @@ export default function CustomerPanel({ threadId }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // No catch here previously: on failure the "✓ Saved" tick simply never
+  // appeared and nothing else happened, so the button looked inert.
   const handleSaveNotes = async () => {
     if (!customer?.email) return;
-    await updateCustomerNotes(customer.email, notes);
-    setNotesSaved(true);
-    setTimeout(() => setNotesSaved(false), 2000);
+    try {
+      await updateCustomerNotes(customer.email, notes);
+      setNotesSaved(true);
+      setTimeout(() => setNotesSaved(false), 2000);
+    } catch (err) {
+      toast.error("Couldn't save notes", { detail: errorMessage(err) });
+    }
   };
 
   const handleAddCustomer = async () => {
     if (!customer?.email) return;
-    await createCustomer({ email: customer.email, ...newCustomer });
-    setShowAddForm(false);
-    load();
+    try {
+      await createCustomer({ email: customer.email, ...newCustomer });
+      setShowAddForm(false);
+      load();
+      toast.success('Customer details saved');
+    } catch (err) {
+      toast.error("Couldn't save customer details", { detail: errorMessage(err) });
+    }
   };
 
   if (loading) {
@@ -69,12 +108,30 @@ export default function CustomerPanel({ threadId }) {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className={styles.root}>
+        <div className={styles.panelHeader}><span>Customer</span></div>
+        <div className={styles.body} role="alert">
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>Couldn’t load customer</div>
+            <div className={styles.noInfo}>
+              {loadError}{' '}
+              <button className={styles.inlineBtn} onClick={load}>Retry</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const brandColor = getBrandColor(thread?.brand || '');
   const rawName = customer?.name || thread?.customer_name || '';
   const isShopifyStoreName = rawName.toLowerCase().includes('shopify') || rawName.toLowerCase().includes(' store');
   const displayName = (!rawName || isShopifyStoreName) ? null : rawName;
   const initials = getInitials(displayName || customer?.email || '');
   const hasTicketInfo = thread?.ticket_id || thread?.order_number || thread?.issue_category;
+  const priorTickets  = pastTickets.filter(t => t.id !== parseInt(threadId));
 
   return (
     <div className={styles.root}>
@@ -91,7 +148,7 @@ export default function CustomerPanel({ threadId }) {
 
       <div className={styles.body}>
 
-        {/* Avatar + name */}
+        {/* Avatar + name — always visible; everything below it is a section */}
         <div className={styles.profileTop}>
           <div className={styles.avatar} style={{ background: brandColor.bg, color: brandColor.text }}>
             {initials || '?'}
@@ -110,8 +167,12 @@ export default function CustomerPanel({ threadId }) {
         </div>
 
         {/* Contact info */}
-        <div className={styles.section}>
-          <div className={styles.sectionTitle}>Contact</div>
+        <AccordionSection
+          title="Contact"
+          open={isOpen('contact')}
+          onToggle={() => toggle('contact')}
+          summary={maskPhone(customer?.phone || thread?.customer_phone) || 'No phone on file'}
+        >
           <div className={styles.detailRows}>
             {(customer?.phone || thread?.customer_phone) && (
               <div className={styles.detailRow}>
@@ -150,12 +211,28 @@ export default function CustomerPanel({ threadId }) {
               </div>
             </div>
           )}
-        </div>
+        </AccordionSection>
+
+        {/* Order — open by default, because most tickets are about one */}
+        {thread?.order_number && (
+          <AccordionSection
+            title="Order"
+            open={isOpen('order')}
+            onToggle={() => toggle('order')}
+            summary={`#${displayOrderId(thread.order_id_resolved || thread.order_number)}`}
+          >
+            <OrderPanel thread={thread} />
+          </AccordionSection>
+        )}
 
         {/* This ticket's parsed info */}
         {hasTicketInfo && (
-          <div className={styles.section}>
-            <div className={styles.sectionTitle}>This ticket</div>
+          <AccordionSection
+            title="This ticket"
+            open={isOpen('ticket')}
+            onToggle={() => toggle('ticket')}
+            summary={thread.issue_category || thread.ticket_id}
+          >
             <div className={styles.ticketCard}>
               {thread.ticket_id && (
                 <div className={styles.ticketIdRow}>
@@ -183,25 +260,22 @@ export default function CustomerPanel({ threadId }) {
                 )}
               </div>
             </div>
-          </div>
+          </AccordionSection>
         )}
 
-        {/* Order details from external DB */}
-        {thread?.order_number && (
-          <div className={styles.section}>
-            <div className={styles.sectionTitle}>Order details</div>
-            <OrderPanel thread={thread} />
-          </div>
-        )}
-
-        {/* Past tickets */}
-        {pastTickets.filter(t => t.id !== parseInt(threadId)).length > 0 && (
-          <div className={styles.section}>
-            <div className={styles.sectionTitle}>
-              Past tickets ({pastTickets.filter(t => t.id !== parseInt(threadId)).length})
-            </div>
-            {pastTickets
-              .filter(t => t.id !== parseInt(threadId))
+        {/* History — "past tickets" and "past orders" were two separate panels
+            answering the same question: what happened with this customer
+            before? Past orders live inside OrderPanel above; this is tickets. */}
+        <AccordionSection
+          title="History"
+          count={priorTickets.length}
+          open={isOpen('history')}
+          onToggle={() => toggle('history')}
+          summary={priorTickets.length ? `${priorTickets.length} past ticket${priorTickets.length > 1 ? 's' : ''}` : 'First contact'}
+          empty={priorTickets.length === 0}
+          emptyText="No previous tickets from this customer."
+        >
+          {priorTickets
               .slice(0, 6)
               .map(t => (
                 <div key={t.id} className={styles.pastTicket}>
@@ -221,18 +295,22 @@ export default function CustomerPanel({ threadId }) {
                   <div className={styles.ptBrand}>{t.brand}</div>
                 </div>
               ))}
-          </div>
-        )}
+        </AccordionSection>
 
         {/* Agent notes */}
-        <div className={styles.section}>
-          <div className={styles.sectionTitle}>Agent notes</div>
+        <AccordionSection
+          title="Notes"
+          open={isOpen('notes')}
+          onToggle={() => toggle('notes')}
+          summary={notes ? truncate(notes, 34) : 'None'}
+        >
           <textarea
             className={styles.notesArea}
             rows={3}
             placeholder="Add private notes about this customer…"
             value={notes}
             onChange={e => setNotes(e.target.value)}
+            aria-label="Private notes about this customer"
           />
           <button
             className={`${styles.saveNotesBtn} ${notesSaved ? styles.saved : ''}`}
@@ -240,7 +318,7 @@ export default function CustomerPanel({ threadId }) {
           >
             {notesSaved ? '✓ Saved' : 'Save notes'}
           </button>
-        </div>
+        </AccordionSection>
 
       </div>
     </div>

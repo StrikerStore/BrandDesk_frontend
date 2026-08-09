@@ -13,6 +13,50 @@ api.interceptors.request.use(config => {
   return config;
 });
 
+// ── Error handling ───────────────────────────────────────────────────────────
+// Every caller used to dig `err.response?.data?.error || err.message` out by
+// hand (20+ sites, several of which forgot and swallowed the failure). One
+// interceptor normalises the shape and handles the two cases no individual
+// caller can sensibly handle on its own: an expired session and a dead network.
+
+// Set by App so the interceptor can drop the user back to login without
+// importing React state.
+let onUnauthorized = null;
+export function setUnauthorizedHandler(fn) { onUnauthorized = fn; }
+
+export function errorMessage(err, fallback = 'Something went wrong') {
+  return err?.userMessage || err?.response?.data?.error || err?.message || fallback;
+}
+
+api.interceptors.response.use(
+  res => res,
+  err => {
+    const status = err.response?.status;
+
+    if (!err.response) {
+      err.userMessage = navigator.onLine
+        ? 'Could not reach the server. Check your connection and retry.'
+        : 'You are offline. Changes will not be saved until you reconnect.';
+    } else if (status === 401) {
+      // Don't bounce on the auth probe itself — App uses its failure to decide
+      // whether to render the login page in the first place.
+      const isAuthProbe = err.config?.url?.includes('/api/users/me')
+        || err.config?.url?.includes('/api/users/login');
+      err.userMessage = 'Your session expired. Please sign in again.';
+      if (!isAuthProbe) {
+        localStorage.removeItem('bd_token');
+        onUnauthorized?.();
+      }
+    } else if (status === 403) {
+      err.userMessage = err.response.data?.error || 'You do not have permission to do that.';
+    } else if (status >= 500) {
+      err.userMessage = 'The server hit an error. Please retry in a moment.';
+    }
+
+    return Promise.reject(err);
+  }
+);
+
 // Threads
 export const fetchThreads     = (params = {}) => api.get('/api/threads', { params });
 export const fetchThread      = (id)          => api.get(`/api/threads/${id}`);

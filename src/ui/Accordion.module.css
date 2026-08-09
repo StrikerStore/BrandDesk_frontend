@@ -1,0 +1,65 @@
+.section {
+  border-bottom: 1px solid var(--border);
+}
+.section:last-child { border-bottom: none; }
+
+.heading { margin: 0; font-size: inherit; font-weight: inherit; }
+
+.trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 14px;
+  text-align: left;
+  background: none;
+  color: var(--text-primary);
+  transition: background 0.1s;
+}
+.trigger:hover { background: var(--surface-2); }
+
+.chev { transition: transform 0.18s ease; color: var(--text-tertiary); }
+.chevOpen { transform: rotate(180deg); color: var(--text-secondary); }
+
+.title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.count {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* A closed section still says what's inside it. */
+.summary {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.panel { padding: 0 14px 14px; }
+
+.empty {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  padding: 2px 0 4px;
+}
+
+/* An open section reads as a group: its header sits on the panel it owns. */
+.sectionOpen .trigger { background: var(--surface-2); }
+.sectionOpen { background: var(--surface); }

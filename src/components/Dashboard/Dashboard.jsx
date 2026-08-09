@@ -3,8 +3,10 @@ import {
   fetchAnalyticsOverview, fetchAnalyticsVolume, fetchAnalyticsByBrand,
   fetchAnalyticsByIssue, fetchAnalyticsResponse, fetchAnalyticsSla,
   fetchAnalyticsActions, fetchAnalyticsAgents, fetchAnalyticsResolvedBy,
-  fetchAnalyticsTemplates, downloadAnalyticsExport,
+  fetchAnalyticsTemplates, downloadAnalyticsExport, errorMessage,
 } from '../../utils/api.js';
+import { TYPE_LABELS } from '../../utils/actionTypes.js';
+import { useToast } from '../../ui/ToastProvider.jsx';
 import styles from './Dashboard.module.css';
 
 const RANGE_OPTIONS = [
@@ -14,10 +16,9 @@ const RANGE_OPTIONS = [
   { label: '90 days', value: 90 },
 ];
 
-const ACTION_LABELS = {
-  exchange: '🔄 Exchange', return: '↩ Return', alternate_product: '🔁 Alternate',
-  refund: '💰 Refund', change_size: '📏 Change Size', change_address: '📍 Change Address',
-};
+// Was a third, drifted copy of the action-type labels ('Alternate' here vs
+// 'Alternate Product' in the two Actions views). Shared config now.
+const ACTION_LABELS = TYPE_LABELS;
 
 const toDateStr = (d) => {
   const p = (n) => String(n).padStart(2, '0');
@@ -45,8 +46,9 @@ function delta(current, previous) {
   return { pct: Math.abs(pct), dir: pct > 0 ? 'up' : 'down' };
 }
 
-export default function Dashboard({ onClose, sidebarWidth, user, brands = [] }) {
+export default function Dashboard({ user, brands = [], onDrillDown, onOpenThread }) {
   const isAdmin = user?.role === 'admin';
+  const toast = useToast();
 
   const [range, setRange]     = useState(30);
   const [custom, setCustom]   = useState({ from: '', to: '' });
@@ -112,12 +114,6 @@ export default function Dashboard({ onClose, sidebarWidth, user, brands = [] }) 
 
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    const handler = (e) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onClose]);
-
   const handleExport = async () => {
     setExporting(true);
     try {
@@ -132,9 +128,9 @@ export default function Dashboard({ onClose, sidebarWidth, user, brands = [] }) 
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      toast.success('Export downloaded');
     } catch (err) {
-      console.error('Export failed:', err);
-      alert('Export failed. Please try again.');
+      toast.error("Couldn't build the export", { detail: errorMessage(err) });
     } finally {
       setExporting(false);
     }
@@ -150,7 +146,7 @@ export default function Dashboard({ onClose, sidebarWidth, user, brands = [] }) 
   const setCustomTo   = (v) => setCustom(c => ({ from: c.from || v, to: v }));
 
   return (
-    <div className={styles.root} style={{ left: sidebarWidth || 0 }}>
+    <div className={styles.root}>
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
@@ -167,12 +163,6 @@ export default function Dashboard({ onClose, sidebarWidth, user, brands = [] }) 
               {exporting ? 'Preparing…' : 'Export Excel'}
             </button>
           )}
-          <button className={styles.closeBtn} onClick={onClose} title="Back to inbox (Esc)">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
-            Close
-          </button>
         </div>
       </div>
 
@@ -235,49 +225,102 @@ export default function Dashboard({ onClose, sidebarWidth, user, brands = [] }) 
       ) : (
         <div className={styles.body}>
 
-          {/* Headline metrics — activity is range-scoped, backlog is right now */}
-          <div className={styles.cardGrid}>
-            <StatCard label="New tickets" value={overview?.range_new} color="purple"
-              delta={delta(overview?.range_new, overview?.prev_new)} />
-            <StatCard label="Resolved" value={overview?.range_resolved} color="green"
-              delta={delta(overview?.range_resolved, overview?.prev_resolved)} />
-            <StatCard label="Avg first response" value={formatMins(overview?.range_avg_response_mins)} color="blue" isText
-              delta={delta(overview?.range_avg_response_mins, overview?.prev_avg_response_mins)} lowerIsBetter />
-            <StatCard label="Avg resolution" value={formatMins(overview?.avg_resolution_mins)} color="blue" isText
-              sub={`median ${formatMins(overview?.median_resolution_mins)}`} />
-            <StatCard label="SLA compliance"
-              value={overview?.sla_compliance_pct === null ? '—' : `${overview?.sla_compliance_pct}%`}
-              color={overview?.sla_compliance_pct >= 90 ? 'green' : overview?.sla_compliance_pct >= 70 ? 'amber' : 'red'}
-              isText sub={`${overview?.sla_within}/${overview?.sla_measured} in 4 business hrs`} />
-            <StatCard label="Open now" value={overview?.open} color="amber"
-              sub={`${overview?.urgent || 0} urgent · ${overview?.in_progress || 0} in progress`} />
-          </div>
+          {/* ── BAND 1 · Needs attention now ──────────────────────────
+              Live backlog, not period statistics. This used to sit at the
+              bottom of a flat stack with the same weight as "most used
+              templates (all time)". */}
+          <Band
+            title="Needs attention now"
+            sub="Live backlog — not affected by the date range above"
+            tone={sla?.breach > 0 ? 'alert' : 'calm'}
+          >
+            {sla && (
+              <div className={`${styles.slaBanner} ${sla.breach > 0 ? styles.slaBannerAlert : ''}`}>
+                <div className={styles.slaLeft}>
+                  <span className={styles.slaBannerTitle}>SLA status</span>
+                  <span className={styles.slaSub}>{sla.sla_description}</span>
+                </div>
+                <div className={styles.slaStats}>
+                  <SlaStat n={sla.on_track} label="On track" cls={styles.slaNumGood} />
+                  <div className={styles.slaDivider} />
+                  <SlaStat n={sla.at_risk} label="At risk" cls={styles.slaNumWarn} />
+                  <div className={styles.slaDivider} />
+                  <SlaStat n={sla.breach} label="Breached" cls={styles.slaNumBad} />
+                </div>
+              </div>
+            )}
 
-          {/* SLA banner */}
-          {sla && (
-            <div className={`${styles.slaBanner} ${sla.breach > 0 ? styles.slaBannerAlert : ''}`}>
-              <div className={styles.slaLeft}>
-                <span className={styles.slaBannerTitle}>SLA Status · live backlog</span>
-                <span className={styles.slaSub}>{sla.sla_description}</span>
-              </div>
-              <div className={styles.slaStats}>
-                <div className={styles.slaStat}>
-                  <span className={`${styles.slaNum} ${styles.slaNumGood}`}>{sla.on_track}</span>
-                  <span className={styles.slaLabel}>On track</span>
-                </div>
-                <div className={styles.slaDivider} />
-                <div className={styles.slaStat}>
-                  <span className={`${styles.slaNum} ${styles.slaNumWarn}`}>{sla.at_risk}</span>
-                  <span className={styles.slaLabel}>At risk</span>
-                </div>
-                <div className={styles.slaDivider} />
-                <div className={styles.slaStat}>
-                  <span className={`${styles.slaNum} ${styles.slaNumBad}`}>{sla.breach}</span>
-                  <span className={styles.slaLabel}>Breached</span>
-                </div>
-              </div>
+            <div className={styles.twoCol}>
+              <Panel title="SLA breached tickets" sub="business hours: Mon–Sat 10AM–8PM IST">
+                {!sla?.breaching_threads?.length ? (
+                  <Empty text="All open tickets are within SLA" isGood />
+                ) : (
+                  <div className={styles.slaList}>
+                    {/* The most actionable list in the app used to be inert
+                        text: you read "TKT-1043 · 3h overdue" and then went
+                        hunting for it in the inbox by hand. */}
+                    {sla.breaching_threads.map(t => (
+                      <button
+                        key={t.id}
+                        className={styles.slaRow}
+                        onClick={() => onOpenThread?.(t.id)}
+                        data-focus-inset
+                      >
+                        <div className={styles.slaRowLeft}>
+                          <span className={styles.slaTicketId}>{t.ticket_id || `#${t.id}`}</span>
+                          <span className={styles.slaCustomer}>{t.customer_name || t.customer_email}</span>
+                          <span className={styles.slaBrand}>{t.brand}</span>
+                        </div>
+                        <div className={styles.slaRowRight}>
+                          <span className={`${styles.slaTime} ${t.pct >= 150 ? styles.slaTimeCritical : styles.slaTimeWarning}`}>
+                            {t.sla_label || `${formatMins(t.elapsed_mins)} overdue`}
+                          </span>
+                          {t.priority === 'urgent' && <span className={styles.urgentTag}>Urgent</span>}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </Panel>
+
+              <Panel title="Backlog aging" sub="unresolved tickets by age">
+                {!overview?.backlog_aging || Object.values(overview.backlog_aging).every(v => !v) ? (
+                  <Empty text="No unresolved tickets" isGood />
+                ) : (
+                  <HBarChart
+                    data={[
+                      { label: 'Under 1 day', total: overview.backlog_aging.under_1d },
+                      { label: '1 – 3 days',  total: overview.backlog_aging.d1_3 },
+                      { label: '3 – 7 days',  total: overview.backlog_aging.d3_7 },
+                      { label: 'Over 7 days', total: overview.backlog_aging.over_7d },
+                    ]}
+                    labelKey="label" valueKey="total"
+                  />
+                )}
+              </Panel>
             </div>
-          )}
+          </Band>
+
+          {/* ── BAND 2 · How we're doing ─────────────────────────── */}
+          <Band title="How we’re doing" sub={periodLabel}>
+            <div className={styles.cardGrid}>
+              <StatCard label="New tickets" value={overview?.range_new} color="purple"
+                delta={delta(overview?.range_new, overview?.prev_new)} />
+              <StatCard label="Resolved" value={overview?.range_resolved} color="green"
+                delta={delta(overview?.range_resolved, overview?.prev_resolved)}
+                onClick={onDrillDown && (() => onDrillDown({ status: 'resolved' }))} />
+              <StatCard label="Avg first response" value={formatMins(overview?.range_avg_response_mins)} color="blue" isText
+                delta={delta(overview?.range_avg_response_mins, overview?.prev_avg_response_mins)} lowerIsBetter />
+              <StatCard label="Avg resolution" value={formatMins(overview?.avg_resolution_mins)} color="blue" isText
+                sub={`median ${formatMins(overview?.median_resolution_mins)}`} />
+              <StatCard label="SLA compliance"
+                value={overview?.sla_compliance_pct === null ? '—' : `${overview?.sla_compliance_pct}%`}
+                color={overview?.sla_compliance_pct >= 90 ? 'green' : overview?.sla_compliance_pct >= 70 ? 'amber' : 'red'}
+                isText sub={`${overview?.sla_within}/${overview?.sla_measured} in 4 business hrs`} />
+              <StatCard label="Open now" value={overview?.open} color="amber"
+                sub={`${overview?.urgent || 0} urgent · ${overview?.in_progress || 0} in progress`}
+                onClick={onDrillDown && (() => onDrillDown({ status: 'open' }))} />
+            </div>
 
           <div className={styles.twoCol}>
             <Panel title="Ticket volume" sub={periodLabel}>
@@ -300,23 +343,11 @@ export default function Dashboard({ onClose, sidebarWidth, user, brands = [] }) 
             </Panel>
           </div>
 
-          <div className={styles.twoCol}>
-            <Panel title="Backlog aging" sub="unresolved tickets by age">
-              {!overview?.backlog_aging || Object.values(overview.backlog_aging).every(v => !v) ? (
-                <Empty text="✓ No unresolved tickets" isGood />
-              ) : (
-                <HBarChart
-                  data={[
-                    { label: 'Under 1 day', total: overview.backlog_aging.under_1d },
-                    { label: '1 – 3 days',  total: overview.backlog_aging.d1_3 },
-                    { label: '3 – 7 days',  total: overview.backlog_aging.d3_7 },
-                    { label: 'Over 7 days', total: overview.backlog_aging.over_7d },
-                  ]}
-                  labelKey="label" valueKey="total"
-                />
-              )}
-            </Panel>
+          </Band>
 
+          {/* ── BAND 3 · Where the work is ───────────────────────── */}
+          <Band title="Where the work is" sub={periodLabel}>
+          <div className={styles.twoCol}>
             <Panel title="Actions" sub="exchanges, returns and refunds opened in period">
               {actions.length === 0 ? <Empty text="No actions logged in this period" /> : (
                 <table className={styles.table}>
@@ -345,11 +376,23 @@ export default function Dashboard({ onClose, sidebarWidth, user, brands = [] }) 
                     <th>Brand</th><th>Total</th><th>Open</th><th>Resolved</th><th>Urgent</th><th>Avg response</th>
                   </tr></thead>
                   <tbody>
+                    {/* Every count here is a question about the inbox, so it
+                        links to the filtered answer instead of leaving the
+                        reader to reproduce the filter by hand. */}
                     {byBrand.map(b => (
                       <tr key={b.brand}>
-                        <td className={styles.brandCell}>{b.brand}</td>
+                        <td className={styles.brandCell}>
+                          {onDrillDown
+                            ? <button className={styles.cellLink} onClick={() => onDrillDown({ brand: b.brand, status: 'all' })}>{b.brand}</button>
+                            : b.brand}
+                        </td>
                         <td><strong>{b.total}</strong></td>
-                        <td><span className={`${styles.badge} ${styles.badgeWarn}`}>{b.open}</span></td>
+                        <td>
+                          {onDrillDown
+                            ? <button className={`${styles.badge} ${styles.badgeWarn} ${styles.badgeLink}`}
+                                onClick={() => onDrillDown({ brand: b.brand, status: 'open' })}>{b.open}</button>
+                            : <span className={`${styles.badge} ${styles.badgeWarn}`}>{b.open}</span>}
+                        </td>
                         <td><span className={`${styles.badge} ${styles.badgeGood}`}>{b.resolved}</span></td>
                         <td>{b.urgent > 0 ? <span className={`${styles.badge} ${styles.badgeBad}`}>{b.urgent}</span> : '—'}</td>
                         <td className={styles.muted}>{formatMins(b.avg_response_mins)}</td>
@@ -479,37 +522,14 @@ export default function Dashboard({ onClose, sidebarWidth, user, brands = [] }) 
             </Panel>
           </div>
 
-          <div className={styles.twoCol}>
-            <Panel title="SLA breached tickets" sub="business hours: Mon–Sat 10AM–8PM IST">
-              {!sla?.breaching_threads?.length ? (
-                <Empty text="✓ All open tickets are within SLA" isGood />
-              ) : (
-                <div className={styles.slaList}>
-                  {sla.breaching_threads.map(t => (
-                    <div key={t.id} className={styles.slaRow}>
-                      <div className={styles.slaRowLeft}>
-                        <span className={styles.slaTicketId}>{t.ticket_id || `#${t.id}`}</span>
-                        <span className={styles.slaCustomer}>{t.customer_name || t.customer_email}</span>
-                        <span className={styles.slaBrand}>{t.brand}</span>
-                      </div>
-                      <div className={styles.slaRowRight}>
-                        <span className={`${styles.slaTime} ${t.pct >= 150 ? styles.slaTimeCritical : styles.slaTimeWarning}`}>
-                          {t.sla_label || `${formatMins(t.elapsed_mins)} overdue`}
-                        </span>
-                        {t.priority === 'urgent' && <span className={styles.urgentTag}>Urgent</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </Panel>
-
-            {templates.length > 0 && (
+          {templates.length > 0 && (
+            <div className={styles.twoCol}>
               <Panel title="Most used templates" sub="all time">
                 <HBarChart data={templates} labelKey="title" valueKey="usage_count" />
               </Panel>
-            )}
-          </div>
+            </div>
+          )}
+          </Band>
 
         </div>
       )}
@@ -518,6 +538,32 @@ export default function Dashboard({ onClose, sidebarWidth, user, brands = [] }) 
 }
 
 // ── Helpers ─────────────────────────────────────────────────────
+
+/**
+ * A priority band. The page was previously one flat stack in which
+ * "SLA breached tickets" and "most used templates (all time)" carried
+ * identical visual weight.
+ */
+function Band({ title, sub, tone, children }) {
+  return (
+    <section className={`${styles.band} ${tone === 'alert' ? styles.bandAlert : ''}`}>
+      <div className={styles.bandHead}>
+        <h2 className={styles.bandTitle}>{title}</h2>
+        {sub && <span className={styles.bandSub}>{sub}</span>}
+      </div>
+      <div className={styles.bandBody}>{children}</div>
+    </section>
+  );
+}
+
+function SlaStat({ n, label, cls }) {
+  return (
+    <div className={styles.slaStat}>
+      <span className={`${styles.slaNum} ${cls}`}>{n}</span>
+      <span className={styles.slaLabel}>{label}</span>
+    </div>
+  );
+}
 
 function Panel({ title, sub, note, children }) {
   return (
@@ -536,13 +582,20 @@ function Empty({ text, isGood }) {
   return <div className={`${styles.emptyChart} ${isGood ? styles.emptyGood : ''}`}>{text}</div>;
 }
 
-function StatCard({ label, value, color, isText, delta: d, sub, lowerIsBetter }) {
+function StatCard({ label, value, color, isText, delta: d, sub, lowerIsBetter, onClick }) {
   // For durations a drop is an improvement, so the arrow direction and the
   // good/bad colour have to be decided separately.
   const good = d && d.dir !== 'flat' && (lowerIsBetter ? d.dir === 'down' : d.dir === 'up');
 
+  // A card that answers a question about the inbox should take you there.
+  const Tag = onClick ? 'button' : 'div';
+
   return (
-    <div className={`${styles.statCard} ${styles[`stat_${color}`] || ''}`}>
+    <Tag
+      className={`${styles.statCard} ${styles[`stat_${color}`] || ''} ${onClick ? styles.statCardLink : ''}`}
+      onClick={onClick}
+      {...(onClick ? { 'data-focus-inset': true } : {})}
+    >
       <div className={styles.statLabel}>{label}</div>
       <div className={`${styles.statValue} ${isText ? styles.statValueText : ''}`}>
         {value ?? '—'}
@@ -557,17 +610,21 @@ function StatCard({ label, value, color, isText, delta: d, sub, lowerIsBetter })
         ) : <span className={styles.deltaFlat}>{sub || 'vs prev —'}</span>}
         {d && sub && <span className={styles.statSub}>{sub}</span>}
       </div>
-    </div>
+    </Tag>
   );
 }
 
 function BarChart({ data, bars }) {
   const maxVal = Math.max(...data.map(d => Math.max(...bars.map(b => Number(d[b.key]) || 0))), 1);
   // Cap the bar count so a 90-day range stays legible
-  const display = data.length > 60 ? data.slice(-60) : data;
+  const truncated = data.length > 60;
+  const display = truncated ? data.slice(-60) : data;
 
   return (
     <div className={styles.barChart}>
+      {/* A scale reference — the bars had no axis at all, so a tall bar could
+          mean 4 tickets or 400. */}
+      <div className={styles.chartScale}><span>{maxVal}</span><span>0</span></div>
       <div className={styles.barChartBars}>
         {display.map((d, i) => (
           <div key={i} className={styles.barGroup}
@@ -585,7 +642,27 @@ function BarChart({ data, bars }) {
             <span className={`${styles.legendDot} ${b.cls}`} />{b.label}
           </span>
         ))}
+        {/* Say so rather than silently dropping the earlier days. */}
+        {truncated && (
+          <span className={styles.truncNote}>showing last 60 of {data.length} days</span>
+        )}
       </div>
+
+      {/* Screen readers get the numbers; the div-based bars are decorative. */}
+      <details className={styles.dataTable}>
+        <summary>View as table</summary>
+        <table className={styles.table}>
+          <thead><tr><th>Date</th>{bars.map(b => <th key={b.key}>{b.label}</th>)}</tr></thead>
+          <tbody>
+            {display.map((d, i) => (
+              <tr key={i}>
+                <td>{d.label || d.date}</td>
+                {bars.map(b => <td key={b.key}>{d[b.key] || 0}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </details>
     </div>
   );
 }

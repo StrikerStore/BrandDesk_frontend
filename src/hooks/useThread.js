@@ -92,13 +92,19 @@ export function useThread(threadId) {
     return [...messages, ...bubbles];
   }, [messages, pending]);
 
+  // Rolls its own optimistic update back and hands the failure to the caller.
+  // Logging to console meant the select kept showing a status the server never
+  // accepted, and the agent moved on believing the ticket had been updated.
   const patchStatus = useCallback(async (status) => {
-    if (!thread) return;
+    if (!thread) return { ok: false };
+    const previous = thread.status;
     setThread(prev => ({ ...prev, status }));
     try {
       await updateThread(thread.id, { status });
+      return { ok: true };
     } catch (err) {
-      console.error('Status update failed:', err.message);
+      setThread(prev => ({ ...prev, status: previous }));
+      return { ok: false, previous, error: err };
     }
   }, [thread]);
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchThreads, syncThreads as apiSync, fullSyncThreads as apiFullSync } from '../utils/api';
+import { fetchThreads, syncThreads as apiSync, fullSyncThreads as apiFullSync, errorMessage } from '../utils/api';
+import { pushToast } from '../ui/ToastProvider.jsx';
 
 const PAGE_SIZE = 50;
 
@@ -110,22 +111,36 @@ export function useThreads(filters = {}) {
       totalRef.current = data.total || totalRef.current;
       setTotal(data.total || totalRef.current);
     } catch (err) {
-      console.error('Load more failed:', err.message);
+      // Infinite scroll failing silently just looks like the list ending.
+      pushToast({
+        variant: 'error',
+        message: "Couldn't load more tickets",
+        detail: errorMessage(err),
+        action: { label: 'Retry', onClick: loadMoreRef.current },
+      });
     } finally {
       loadingRef.current = false;
       setLoadingMore(false);
     }
   }, []);  // no deps needed — all mutable state is in refs
 
+  // Lets the retry action in the failure toast re-enter loadMore without
+  // making loadMore depend on itself.
+  const loadMoreRef = useRef(loadMore);
+  loadMoreRef.current = loadMore;
+
   const hasMore = threads.length < total;
 
+  // Both return a result so the caller can toast. Swallowing the rejection
+  // made a failed sync indistinguishable from "no new mail".
   const sync = useCallback(async () => {
     setSyncing(true);
     try {
-      await apiSync();
+      const { data } = await apiSync();
       await load();
+      return { ok: true, imported: data?.imported };
     } catch (err) {
-      console.error('Sync failed:', err.message);
+      return { ok: false, error: err };
     } finally {
       setSyncing(false);
     }
@@ -134,10 +149,11 @@ export function useThreads(filters = {}) {
   const fullSync = useCallback(async () => {
     setSyncing(true);
     try {
-      await apiFullSync();
+      const { data } = await apiFullSync();
       await load();
+      return { ok: true, imported: data?.imported };
     } catch (err) {
-      console.error('Full sync failed:', err.message);
+      return { ok: false, error: err };
     } finally {
       setSyncing(false);
     }

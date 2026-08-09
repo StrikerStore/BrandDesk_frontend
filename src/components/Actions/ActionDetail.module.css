@@ -1,0 +1,211 @@
+.panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(420px, 100%);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-left: 1px solid var(--border-md);
+  box-shadow: var(--shadow-md);
+  animation: slideIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideIn {
+  from { transform: translateX(12px); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+.header {
+  flex-shrink: 0;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.headerTop { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+
+.typeBadge {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 99px;
+  border: 1px solid;
+}
+
+.closedPill {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--surface-3);
+  color: var(--text-secondary);
+}
+
+.close {
+  margin-left: auto;
+  display: flex;
+  padding: 5px;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+}
+.close:hover { background: var(--surface-2); color: var(--text-primary); }
+
+.ticketLink {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 10px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  text-align: left;
+  transition: background 0.12s;
+}
+.ticketLink:hover { background: var(--surface-3); }
+
+.ticketName { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+
+.ticketMeta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+.brandTag { font-size: 10.5px; font-weight: 500; padding: 1px 7px; border-radius: 99px; }
+
+.openHint { font-size: 11px; font-weight: 500; color: var(--accent-text); }
+
+.body { flex: 1; overflow-y: auto; padding: 4px 16px 16px; }
+
+.section { padding: 14px 0; border-bottom: 1px solid var(--border); }
+.section:last-child { border-bottom: none; }
+
+.sectionHead { display: flex; align-items: baseline; justify-content: space-between; }
+
+.sectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 9px;
+}
+.sectionHead .sectionTitle { margin-bottom: 0; }
+
+.progressCount { font-size: 11.5px; color: var(--text-tertiary); }
+
+.checks { display: flex; flex-direction: column; gap: 2px; margin-top: 9px; }
+
+.checkRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px;
+  margin: 0 -8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.checkRow:hover { background: var(--surface-2); }
+.checkRowDisabled { cursor: not-allowed; opacity: 0.6; }
+
+/* Real checkbox, visually hidden but still focusable — the old one was
+   display:none, which took it out of the tab order entirely. */
+.nativeCheck {
+  position: absolute;
+  opacity: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  cursor: inherit;
+}
+
+.checkBox {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  color: #fff;
+  transition: all 0.12s;
+}
+.checkBoxOn { background: var(--green); border-color: var(--green); }
+.nativeCheck:focus-visible + .checkBox { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.checkLabel { font-size: 12.5px; color: var(--text-primary); }
+.checkLabelDone { color: var(--text-tertiary); text-decoration: line-through; }
+
+.field { margin-bottom: 12px; }
+.field:last-child { margin-bottom: 0; }
+
+.fieldHead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+
+.fieldLabel { font-size: 11.5px; font-weight: 500; color: var(--text-secondary); }
+
+.saveState { font-size: 10.5px; font-weight: 500; }
+.save_idle   { color: transparent; }
+.save_saving { color: var(--text-tertiary); }
+.save_saved  { color: var(--green-text); }
+.save_error  { color: var(--red-text); }
+
+.input {
+  width: 100%;
+  border: 1px solid var(--border-md);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  background: var(--surface);
+  outline: none;
+  font-family: var(--font-sans);
+}
+.input:focus { border-color: var(--accent); }
+.input:disabled { background: var(--surface-2); color: var(--text-tertiary); cursor: not-allowed; }
+
+.textarea { resize: vertical; line-height: 1.5; min-height: 46px; }
+.mono { font-family: var(--font-mono); font-size: 11.5px; }
+
+.timelineRow { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+.timelineLabel { font-size: 11.5px; color: var(--text-tertiary); }
+.timelineVal { font-size: 11.5px; color: var(--text-secondary); }
+
+.footer {
+  flex-shrink: 0;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.closeActionBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px;
+  border-radius: var(--radius-md);
+  background: var(--green);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+}
+.closeActionBtn:hover { opacity: 0.9; }
+
+@media (max-width: 768px) {
+  .panel {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    border-left: none;
+  }
+}

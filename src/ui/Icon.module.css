@@ -1,0 +1,92 @@
+/* Animate UI's icon behaviour, expressed in CSS: each glyph reacts when the
+   control around it is hovered, or when it is marked active. Sub-paths carry
+   plain class names (`.hand`, `.fly`, …) set in Icon.jsx — those are inside
+   the SVG, so CSS Modules leaves them alone and they can be targeted directly.
+
+   Every transition here is inside the global prefers-reduced-motion guard in
+   index.css, so it all flattens to nothing for users who ask for that. */
+
+.icon {
+  flex-shrink: 0;
+  display: block;
+  overflow: visible;
+}
+
+.icon * {
+  transform-origin: center;
+  transition:
+    transform 0.22s cubic-bezier(0.34, 1.4, 0.64, 1),
+    opacity 0.18s ease;
+}
+
+/* Hover on any enclosing control drives the animation. */
+:where(button, a, label, [role='button'], summary):hover .icon [class] {
+  /* no-op anchor so the per-icon rules below have something to override */
+}
+
+/* ── clock / history: the hand sweeps ─────────────────────────── */
+:where(button, a, [role='button']):hover .icon [data-icon] { }
+:where(button, a, [role='button']):hover .icon .hand,
+.icon.active .hand {
+  transform: rotate(35deg);
+}
+
+/* ── send: paper plane lifts away ─────────────────────────────── */
+:where(button, a, [role='button']):hover .icon .fly {
+  transform: translate(2px, -2px);
+}
+:where(button, a, [role='button']):active .icon .fly {
+  transform: translate(5px, -5px);
+  opacity: 0;
+  transition-duration: 0.16s;
+}
+
+/* ── paperclip / note: nib tilts ──────────────────────────────── */
+:where(button, a, [role='button']):hover .icon .tilt {
+  transform: rotate(-12deg);
+}
+
+/* ── sparkles: the two stars twinkle out of phase ─────────────── */
+:where(button, a, [role='button']):hover .icon .twinkle {
+  transform: scale(1.12) rotate(12deg);
+}
+:where(button, a, [role='button']):hover .icon .twinkle2 {
+  transform: scale(1.3) rotate(-14deg);
+  transition-delay: 0.05s;
+}
+
+/* ── check marks draw themselves in ───────────────────────────── */
+.icon .draw {
+  stroke-dasharray: 26;
+  stroke-dashoffset: 0;
+}
+.icon.active .draw {
+  animation: drawCheck 0.34s cubic-bezier(0.65, 0, 0.35, 1);
+}
+@keyframes drawCheck {
+  from { stroke-dashoffset: 26; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* ── plus: arms push outward ──────────────────────────────────── */
+:where(button, a, [role='button']):hover .icon .plusV { transform: scaleY(1.18); }
+:where(button, a, [role='button']):hover .icon .plusH { transform: scaleX(1.18); }
+
+/* ── close: the strokes scissor ───────────────────────────────── */
+:where(button, a, [role='button']):hover .icon .x1 { transform: rotate(-8deg); }
+:where(button, a, [role='button']):hover .icon .x2 { transform: rotate(8deg); }
+
+/* ── lock: shackle lifts ──────────────────────────────────────── */
+:where(button, a, [role='button']):hover .icon .shackle,
+.icon.active .shackle {
+  transform: translateY(-1.5px);
+}
+
+/* ── panel toggle: the divider slides ─────────────────────────── */
+:where(button, a, [role='button']):hover .icon .divider {
+  transform: translateX(-2px);
+}
+
+/* ── continuous spin (sync in flight) ─────────────────────────── */
+.spin { animation: iconSpin 0.9s linear infinite; }
+@keyframes iconSpin { to { transform: rotate(360deg); } }

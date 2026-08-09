@@ -7,34 +7,38 @@
   overflow: hidden;
 }
 
+/* Header is inbox-scoped only. Brand identity, Actions, Insights, Settings
+   and the account menu all moved to the persistent nav rail, which returned
+   roughly 120px of vertical space to the ticket list. */
 .header {
-  padding: 16px 16px 0;
+  padding: 14px 14px 0;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .headerTop {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
   gap: 8px;
 }
 
-.logoText {
-  font-size: 15px;
+.titleWrap { display: flex; align-items: center; gap: 7px; min-width: 0; }
+
+.title {
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.3px;
 }
 
+.headerActions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
 .iconBtn {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -42,22 +46,23 @@
   color: var(--text-secondary);
   transition: background 0.12s;
 }
-.iconBtn:hover { background: var(--surface-2); }
+.iconBtn:hover { background: var(--surface-2); color: var(--text-primary); }
 .iconBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-.inboxMeta {
+/* New ticket was an unlabelled pencil icon; it's the list's primary action. */
+.newBtn {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border);
-}
-
-.inboxLabel {
-  font-size: 13px;
+  gap: 4px;
+  height: 30px;
+  padding: 0 11px 0 8px;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: #fff;
+  font-size: 12.5px;
   font-weight: 500;
-  color: var(--text-secondary);
 }
+.newBtn:hover { opacity: 0.9; }
 
 .unreadBadge {
   font-size: 11px;
@@ -65,39 +70,134 @@
   border-radius: 99px;
   background: var(--accent-light);
   color: var(--accent-text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Saved view + brand + save-view, one row */
+.controlRow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.viewSelectWrap { min-width: 0; }
+
+.viewSelect {
+  max-width: 130px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-md);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-size: 12px;
   font-weight: 500;
 }
 
-.filterSection {
-  padding: 12px 16px 0;
-  flex-shrink: 0;
-}
+.brandWrap { position: relative; }
 
-.pills {
+.brandBtn {
   display: flex;
+  align-items: center;
   gap: 5px;
-  flex-wrap: wrap;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-md);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.brandBtn:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.brandBtnActive {
+  background: var(--accent-light);
+  border-color: #93c5fd;
+  color: var(--accent-text);
 }
 
-.pill {
-  font-size: 11.5px;
-  padding: 4px 10px;
+/* Brand list is a popover, so N brands can't wrap into N rows of pills. */
+.brandMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 40;
+  min-width: 180px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border-md);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.brandOption {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  color: var(--text-primary);
+  text-align: left;
+}
+.brandOption:hover { background: var(--surface-2); }
+.brandOptionActive { background: var(--accent-light); color: var(--accent-text); font-weight: 600; }
+
+.brandSwatch { width: 10px; height: 10px; border-radius: 3px; border: 1px solid; flex-shrink: 0; }
+
+/* Active-filter summary — the single answer to "why is my list empty?" */
+.chipRow { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 8px;
   border-radius: 99px;
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  background: transparent;
-  transition: all 0.12s;
+  border: 1px solid var(--border-md);
+  background: var(--surface-2);
+  font-size: 11.5px;
+  color: var(--text-primary);
+  max-width: 100%;
+}
+
+.chipLabel { color: var(--text-secondary); }
+
+.chipRemove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 99px;
+  font-size: 9px;
+  color: var(--text-tertiary);
+}
+.chipRemove:hover { background: var(--surface-3); color: var(--text-primary); }
+
+.clearAll {
+  font-size: 11.5px;
   font-weight: 500;
+  color: var(--accent-text);
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
 }
-.pill:hover { border-color: var(--border-md); color: var(--text-primary); }
-.pillActive {
-  background: var(--text-primary);
-  color: white;
-  border-color: var(--text-primary);
+.clearAll:hover { background: var(--accent-light); }
+
+.emptyClear {
+  margin-top: 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-md);
+  color: var(--text-primary);
+  background: var(--surface);
 }
-.pillBrandActive {
-  border-width: 1px;
-}
+.emptyClear:hover { border-color: var(--border-strong); }
 
 .statusTabs {
   display: flex;
@@ -674,7 +774,7 @@
     height: 100dvh;
     border-right: none;
     background: var(--bg);
-  }
+ }
 
   /* Header — sticky, compact */
   .header {
@@ -683,34 +783,25 @@
     z-index: 30;
     background: var(--surface);
     padding: calc(8px + env(safe-area-inset-top)) 14px 0;
-    border-bottom: 3px solid var(--nb-ink);
-  }
+ }
   .headerTop { margin-bottom: 6px; }
-  .logoText { font-size: 18px; font-weight: 800; letter-spacing: -0.4px; }
+  .logoText { font-size: 18px; font-weight: 600; letter-spacing: -0.4px; }
 
   .iconBtn {
     width: 38px;
     height: 38px;
-    border: 2px solid var(--nb-ink);
     border-radius: 11px;
-    background: var(--nb-sky);
-    color: var(--nb-ink);
-    box-shadow: var(--nb-shadow-sm);
-  }
+ }
   .iconBtn:active { transform: translate(1px, 1px); box-shadow: none; }
-  .iconBtn:nth-child(2) { background: var(--nb-mint); }
 
   .inboxMeta { border-bottom: none; padding-bottom: 8px; }
-  .inboxLabel { font-size: 14px; font-weight: 800; color: var(--nb-ink); }
+  .inboxLabel { font-size: 14px; font-weight: 600; }
   .unreadBadge, .urgentBadge {
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 600;
     padding: 3px 9px;
-    border: 1.5px solid var(--nb-ink);
     border-radius: 99px;
-  }
-  .unreadBadge { background: var(--nb-sky); color: var(--nb-ink); }
-  .urgentBadge { background: var(--nb-coral); color: var(--nb-ink); }
+ }
 
   /* Shared row: [search][brand pills] — tapped side expands */
   .searchFilterRow {
@@ -718,7 +809,7 @@
     align-items: center;
     gap: 8px;
     margin: 8px 14px 0;
-  }
+ }
 
   /* Saved views removed on mobile */
   .savedViews { display: none; }
@@ -732,24 +823,18 @@
     min-width: 52px;
     overflow: hidden;
     transition: flex-basis 0.22s ease, flex-grow 0.22s ease;
-    border: 2px solid var(--nb-ink);
     border-radius: 13px;
     background: var(--surface);
-    box-shadow: var(--nb-shadow-sm);
-  }
+ }
   .searchExpanded .searchWrap { flex: 1 1 90%; }
   .searchInput { font-size: 16px; min-width: 0; }
   .searchBtn { display: none; } /* Enter commits; button only when expanded */
   .searchExpanded .searchBtn {
     display: block;
-    border: 2px solid var(--nb-ink);
     border-radius: 10px;
-    font-weight: 800;
+    font-weight: 600;
     padding: 5px 12px;
-    background: var(--nb-yellow);
-    color: var(--nb-ink);
-  }
-  .searchExpanded .searchBtnActive { background: var(--nb-lav); color: var(--nb-ink); border-color: var(--nb-ink); }
+ }
 
   /* Brand pills — take the remaining width, shrink to a sliver while searching */
   .filterSection {
@@ -758,7 +843,7 @@
     min-width: 44px;
     overflow: hidden;
     transition: flex-basis 0.22s ease, flex-grow 0.22s ease;
-  }
+ }
   .searchExpanded .filterSection { flex: 0 1 10%; }
   .pills {
     flex-wrap: nowrap;
@@ -766,60 +851,43 @@
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 2px;
-  }
+ }
   .pills::-webkit-scrollbar { display: none; }
   .pill {
     flex-shrink: 0;
     height: 32px;
     font-size: 12.5px;
-    font-weight: 700;
+    font-weight: 600;
     padding: 0 13px;
-    border: 2px solid var(--nb-ink);
-    color: var(--nb-ink);
     background: var(--surface);
-  }
-  .pillActive { background: var(--nb-lav); color: var(--nb-ink); box-shadow: var(--nb-shadow-sm); }
-  .pillBrandActive { box-shadow: var(--nb-shadow-sm); }
+ }
 
   /* Status tabs — one scrollable row, never cut off */
   .statusTabs {
     gap: 6px;
     padding: 8px 14px;
-    border-bottom: 3px solid var(--nb-ink);
     background: var(--surface);
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
-  }
+ }
   .statusTabs::-webkit-scrollbar { display: none; }
   .statusTab {
     flex: 0 0 auto;
     white-space: nowrap;
     padding: 0 13px;
     font-size: 12.5px;
-    font-weight: 800;
-    color: var(--nb-ink);
-    border: 2px solid var(--nb-ink);
+    font-weight: 600;
     border-radius: 11px;
     background: var(--surface);
     min-height: 38px;
-  }
-  .statusTabActive {
-    background: var(--nb-peach);
-    border-color: var(--nb-ink);
-    box-shadow: var(--nb-shadow-sm);
-  }
-  .statusTab:nth-child(2).statusTabActive { background: var(--nb-sky); }
-  .statusTab:nth-child(3).statusTabActive { background: var(--nb-mint); }
-  .statusTab:nth-child(4).statusTabActive { background: var(--nb-lav); }
+ }
   .tabCount {
-    border: 1.5px solid var(--nb-ink);
     background: var(--surface);
-    color: var(--nb-ink);
-    font-weight: 800;
-  }
-  .tabCountActive { background: var(--nb-ink); color: #fff; }
+    font-weight: 600;
+ }
+  .tabCountActive { color: #fff; }
 
   /* Thread list */
   .list {
@@ -827,57 +895,49 @@
     padding-bottom: calc(84px + env(safe-area-inset-bottom));
     overscroll-behavior: contain;
     background: var(--bg);
-  }
+ }
   /* WhatsApp-style rows: circle avatar · name+time · ticket line · unread badge */
   .threadRow {
     gap: 12px;
     padding: 11px 14px;
     min-height: 66px;
-    border-bottom: 2px solid rgba(26, 26, 26, 0.1);
     align-items: center;
-  }
-  .threadRow:active { background: var(--nb-yellow-soft); }
+ }
   .threadRow:hover { background: transparent; }
 
   .avatar {
     width: 48px;
     height: 48px;
-    border: 2px solid var(--nb-ink);
     border-radius: 50%;
     font-size: 15px;
-    font-weight: 800;
-  }
+    font-weight: 600;
+ }
   .threadTop { margin-bottom: 1px; }
-  .threadName { font-size: 15.5px; font-weight: 700; max-width: 190px; }
+  .threadName { font-size: 15.5px; font-weight: 600; max-width: 190px; }
   .threadTime { font-size: 11px; }
   .threadSubject {
     font-size: 13px;
     margin-bottom: 0;
     padding-right: 28px; /* clear the unread badge */
-  }
+ }
   /* Chips line hidden — brand colors the avatar, SLA/urgent keep row tint + avatar dots */
   .threadMeta { display: none; }
 
   /* Unread: bold row + counter-style badge under the time */
-  .threadUnread .threadName { font-weight: 800; }
-  .threadUnread .threadSubject { font-weight: 600; color: var(--nb-ink); }
-  .threadUnread .threadTime { font-weight: 800; color: var(--nb-ink); }
+  .threadUnread .threadName { font-weight: 600; }
+  .threadUnread .threadSubject { font-weight: 600; }
+  .threadUnread .threadTime { font-weight: 600; }
   .unreadDot {
     top: auto;
     bottom: 14px;
     right: 14px;
     width: 16px;
     height: 16px;
-    border: 1.5px solid var(--nb-ink);
-    background: var(--nb-sky);
-    box-shadow: 1px 1px 0 var(--nb-ink);
-  }
+ }
 
   /* User menu — neubrutalist card */
   .userMenu {
-    border: 3px solid var(--nb-ink);
-    box-shadow: var(--nb-shadow);
     border-radius: 16px;
-  }
+ }
   .userMenuItem, .userMenuItemDanger { padding: 12px; font-size: 15px; min-height: 44px; }
 }

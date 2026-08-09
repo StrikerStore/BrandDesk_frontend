@@ -364,23 +364,20 @@
    MOBILE — Neubrutalism per-thread action cards (<= 768px)
    ============================================================ */
 @media (max-width: 768px) {
-  .card { border: 2px solid var(--nb-ink); box-shadow: var(--nb-shadow-sm); border-radius: 14px; }
+  .card { border-radius: 14px; }
   .cardHeader { border-radius: 12px 12px 0 0; }
-  .typeBadge { border-width: 2px; font-weight: 700; }
-  .pagerPill { border: 2px solid var(--nb-ink); font-weight: 700; min-height: 34px; }
-  .pagerPillActive { background: var(--nb-mint); color: var(--nb-ink); box-shadow: none; }
+  .typeBadge { font-weight: 600; }
+  .pagerPill { font-weight: 600; min-height: 34px; }
+  .pagerPillActive { box-shadow: none; }
   .jerseyValue, .statusValue { font-size: 14px; }
-  .checkbox { width: 22px; height: 22px; border: 2px solid var(--nb-ink); }
+  .checkbox { width: 22px; height: 22px; }
   .checkLabel { font-size: 14px; }
   .checkRow { min-height: 40px; padding: 6px 0; }
-  .inlineInput { font-size: 16px; min-height: 40px; border: 2px solid var(--nb-ink); }
+  .inlineInput { font-size: 16px; min-height: 40px; }
   .inlineSave, .editBtn { min-height: 38px; }
   .closeActionBtn {
     min-height: 44px;
-    border: 2px solid var(--nb-ink);
     border-radius: 10px;
-    font-weight: 800;
-    background: var(--nb-mint);
-    color: var(--nb-ink);
-  }
+    font-weight: 600;
+ }
 }

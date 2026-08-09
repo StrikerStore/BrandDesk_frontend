@@ -1,13 +1,77 @@
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment, lazy, Suspense } from 'react';
 import { useThread } from '../../hooks/useThread.js';
-import { fetchTemplates, trackTemplateUse, updateThread, resolveThread, improveText, fetchThreadActions } from '../../utils/api.js';
-import { formatFullTime, formatClock, formatDayLabel, resolveTemplate, STATUS_CONFIG, PRIORITY_CONFIG, getBrandColor, getInitials, statusSince } from '../../utils/helpers.js';
-import TemplateEditor from '../Templates/TemplateEditor.jsx';
+import { fetchTemplates, trackTemplateUse, updateThread, resolveThread, improveText, fetchThreadActions, fetchUsers, errorMessage } from '../../utils/api.js';
+import { useToast } from '../../ui/ToastProvider.jsx';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import Icon from '../../ui/Icon.jsx';
+import Menu from '../../ui/Menu.jsx';
+import { formatFullTime, formatClock, formatDayLabel, resolveTemplate, STATUS_CONFIG, getBrandColor, getInitials, statusSince, displayOrderId } from '../../utils/helpers.js';
+// ProseMirror is the app's heaviest dependency and is only needed once a
+// thread is open, so it loads on demand rather than in the first paint.
+const RichEditor = lazy(() => import('../../ui/RichEditor.jsx'));
+import { sanitizeEmailHtml, escapeHtml } from '../../utils/sanitize.js';
 import ActionModal from './ActionModal.jsx';
 import ActionPanel from './ActionPanel.jsx';
 import styles from './ThreadPanel.module.css';
 
-export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, onOpenCustomer, onThreadDeleted }) {
+// Colour + text carry priority now. It used to be an emoji inside a native
+// <select> (🔴 Urgent / ⚪ Normal), which renders per-OS and is announced as
+// "red circle" rather than "urgent".
+const PRIORITY_OPTIONS = [
+  { value: 'urgent', label: 'Urgent', dot: '#dc2626' },
+  { value: 'normal', label: 'Normal', dot: '#9e9d99' },
+  { value: 'low',    label: 'Low',    dot: '#60a5fa' },
+];
+
+const STATUS_OPTIONS = [
+  { value: 'open',        label: 'Open',        dot: '#d97706' },
+  { value: 'in_progress', label: 'In progress', dot: '#2563eb' },
+  { value: 'resolved',    label: 'Resolved',    dot: '#16a34a', hint: 'needs a note' },
+];
+
+// `snoozed_until` has been in the schema, the PATCH handler, the list query
+// and InboxPage's update path all along — there was simply no control anywhere
+// in the UI to set it.
+const SNOOZE_PRESETS = [
+  { value: 'none',     label: 'Not snoozed' },
+  { value: '3h',       label: 'For 3 hours' },
+  { value: 'tomorrow', label: 'Until tomorrow, 9am' },
+  { value: 'monday',   label: 'Until Monday, 9am' },
+  { value: 'week',     label: 'For a week' },
+];
+
+function snoozeUntil(preset) {
+  const d = new Date();
+  switch (preset) {
+    case '3h':       d.setHours(d.getHours() + 3); return d;
+    case 'tomorrow': d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); return d;
+    case 'monday': {
+      // 8 keeps "next Monday" a week away when today is already Monday.
+      const delta = (8 - d.getDay()) % 7 || 7;
+      d.setDate(d.getDate() + delta); d.setHours(9, 0, 0, 0); return d;
+    }
+    case 'week':     d.setDate(d.getDate() + 7); return d;
+    default:         return null;
+  }
+}
+
+function SlaChip({ status, label }) {
+  if (!status || status === 'on_track') return null;
+  const breached = status === 'breached';
+  return (
+    <span
+      className={breached ? styles.slaChipBreached : styles.slaChipRisk}
+      title={label || (breached ? 'SLA breached' : 'SLA at risk')}
+    >
+      <Icon name={breached ? 'alert' : 'clock'} size={11} />
+      {label || (breached ? 'SLA breached' : 'At risk')}
+    </span>
+  );
+}
+
+export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, onOpenCustomer, onThreadDeleted, contextOpen, onToggleContext }) {
+  const toast = useToast();
+  const { user } = useAuth();
   const {
     thread, messages, pending, loading, sending, reply, patchStatus, setThread, reload,
     undoSend, retrySend, discardSend,
@@ -16,7 +80,6 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
   const [replyText, setReplyText]           = useState('');
   const [isNote, setIsNote]                 = useState(false);
   const [showTemplates, setShowTemplates]   = useState(false);
-  const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const [templates, setTemplates]           = useState({});
   const [tplSearch, setTplSearch]           = useState('');
   const [showTagInput, setShowTagInput]     = useState(false);
@@ -27,8 +90,8 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolveForm, setResolveForm]       = useState({ resolved_by: '', resolution_note: '' });
   const [resolving, setResolving]           = useState(false);
-  const [grammarMatches, setGrammarMatches] = useState([]);
-  const [grammarLoading, setGrammarLoading] = useState(false);
+  const [overrideResolver, setOverrideResolver] = useState(false);
+  const [team, setTeam]                     = useState([]);
   const [aiLoading, setAiLoading]           = useState(null); // 'grammar' | 'professional' | null
   const [aiOriginal, setAiOriginal]         = useState(null); // for undo
   const [attachments, setAttachments]       = useState([]); // File[]
@@ -37,7 +100,6 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
   const [headerDetailsOpen, setHeaderDetailsOpen] = useState(false); // mobile: WhatsApp-style collapsed header
   const [showLinkDialog, setShowLinkDialog] = useState(false);
   const [linkUrl, setLinkUrl]               = useState('');
-  const savedRangeRef                       = useRef(null); // saved selection for link insert
 
   // Keep the header badge in sync with actions logged on this thread
   const applyActionList = (list) => {
@@ -60,69 +122,78 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
     loadActionSummary();
   }, [loadActionSummary]);
 
-  // Pre-fill resolver name from last used
+  // Resolver identity comes from the session, not a free-text box prefilled
+  // from localStorage. That box is why Insights carries a "3 spellings of this
+  // name were merged" badge.
   const openResolveModal = () => {
-    const savedName = localStorage.getItem('branddesk_resolver_name') || '';
-    setResolveForm({ resolved_by: savedName, resolution_note: '' });
+    setResolveForm({ resolved_by: user?.name || '', resolution_note: '' });
+    setOverrideResolver(false);
     setShowResolveModal(true);
   };
 
-  const handleGrammarCheck = async () => {
-    if (!replyText.trim() || replyText.trim().length < 10) return;
-    setGrammarLoading(true);
-    setGrammarMatches([]);
+  // Team list for the assignee menu — admins and agents alike need to be able
+  // to hand a ticket over.
+  useEffect(() => {
+    fetchUsers()
+      .then(({ data }) => setTeam((data || []).filter(u => u.is_active)))
+      // Non-admins may not be allowed to list users; assignment then falls
+      // back to "just me", which still prevents the duplicate-reply case.
+      .catch(() => setTeam(user ? [user] : []));
+  }, [user]);
+
+  const assigneeOptions = [
+    { value: 'unassigned', label: 'Unassigned', dot: '' },
+    ...(team.some(u => u.id === user?.id) ? [] : user ? [{ value: user.id, label: `${user.name} (you)`, dot: '#2563eb' }] : []),
+    ...team.map(u => ({
+      value: u.id,
+      label: u.id === user?.id ? `${u.name} (you)` : u.name,
+      dot: u.id === user?.id ? '#2563eb' : '#9e9d99',
+    })),
+  ];
+
+  const handleSnooze = async (preset) => {
+    const until = snoozeUntil(preset);
+    const iso = until ? until.toISOString().slice(0, 19).replace('T', ' ') : null;
+    const previous = { snoozed_until: thread.snoozed_until ?? null };
     try {
-      const params = new URLSearchParams({
-        text:              replyText,
-        language:          'en-GB',
-        enabledOnly:       'false',
-        // Enable extra rule categories for deeper checking
-        enabledCategories: 'GRAMMAR,TYPOS,CONFUSED_WORDS,REDUNDANCY,SEMANTICS,COLLOQUIALISMS,STYLE,PUNCTUATION',
-        // Disable overly nitpicky style-only rules
-        disabledRules:     'WHITESPACE_RULE,COMMA_PARENTHESIS_WHITESPACE,EN_QUOTES',
-        level:             'picky', // picky catches more issues than default
-      });
-      const res = await fetch('https://api.languagetool.org/v2/check', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body:    params.toString(),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`LanguageTool error ${res.status}: ${text}`);
-      }
-      const data = await res.json();
-      // Show all matches with replacements — don't filter out style anymore
-      const filtered = (data.matches || []).filter(m => m.replacements?.length > 0);
-      setGrammarMatches(filtered);
+      await updateThread(thread.id, { snoozed_until: iso });
+      // Telling the parent drops the row out of the list, so do it only once
+      // the write has actually landed.
+      applyUpdate({ snoozed_until: iso });
+      toast.success(
+        until
+          ? `Snoozed until ${until.toLocaleString('en-IN', { weekday: 'short', hour: 'numeric', minute: '2-digit', hour12: true })}`
+          : 'Snooze cleared',
+      );
     } catch (err) {
-      console.error('LanguageTool error:', err);
-    } finally {
-      setGrammarLoading(false);
+      applyUpdate(previous);
+      toast.error("Couldn't snooze this ticket", { detail: errorMessage(err) });
     }
   };
 
-  const handleApplyFix = (match) => {
-    const replacement = match.replacements[0].value;
-    const newText = replyText.slice(0, match.offset) + replacement + replyText.slice(match.offset + match.length);
-    setReplyText(newText);
-    const diff = replacement.length - match.length;
-    setGrammarMatches(prev =>
-      prev.filter(m => m.offset !== match.offset)
-          .map(m => m.offset > match.offset ? { ...m, offset: m.offset + diff } : m)
-    );
+  const handleAssigneeChange = async (value) => {
+    const assignee_id = value === 'unassigned' ? null : value;
+    const previous = { assignee_id: thread.assignee_id ?? null, assignee_name: thread.assignee_name ?? null };
+    const name = assigneeOptions.find(o => o.value === value)?.label;
+    applyUpdate({ assignee_id, assignee_name: assignee_id ? name?.replace(' (you)', '') : null });
+    try {
+      await updateThread(thread.id, { assignee_id });
+      toast.success(assignee_id ? `Assigned to ${name}` : 'Assignment cleared');
+    } catch (err) {
+      applyUpdate(previous);
+      toast.error("Couldn't change the assignee", { detail: errorMessage(err) });
+    }
   };
 
-  const handleDismissFix = (match) => {
-    setGrammarMatches(prev => prev.filter(m => m.offset !== match.offset));
-  };
-
+  // The LanguageTool integration that used to live here has been removed. It
+  // was a second, competing grammar system with a different UI to the server
+  // rewrite below, and it POSTed the draft reply — customer names, order
+  // details — straight from the browser to a third-party public API.
   const handleAiImprove = async (mode) => {
     if (!replyText.trim() || aiLoading) return;
     setAiLoading(mode);
     // Save original HTML so undo restores formatting too
-    setAiOriginal(textareaRef.current?.innerHTML || replyText);
-    setGrammarMatches([]);
+    setAiOriginal(editorRef.current?.getHTML() || '');
     try {
       const { data } = await improveText(replyText, mode);
       const clean = data.improved
@@ -136,50 +207,35 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
       setEditorContent(clean);
     } catch (err) {
       setAiOriginal(null);
-      console.error('AI improve failed:', err.message);
+      toast.error(
+        mode === 'grammar' ? "Couldn't fix grammar" : "Couldn't rewrite the reply",
+        { detail: errorMessage(err) },
+      );
     } finally {
       setAiLoading(null);
     }
   };
-  // ── Editor helpers ───────────────────────────────────────────────────────────
-  // Programmatically set the contentEditable HTML and sync shadow state
-  const setEditorContent = (html) => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.innerHTML = html;
-    setReplyText(el.innerText);
-    setGrammarMatches([]);
-  };
+  // ── Editor ───────────────────────────────────────────────────────────────────
+  // The editor owns its document; `replyText` is only a plain-text mirror used
+  // for enable/disable checks. Formatting goes through ProseMirror commands —
+  // document.execCommand is deprecated and behaved differently per browser.
+  const setEditorContent = (html) => editorRef.current?.setHTML(html || '');
 
-  // ── Formatting (execCommand works natively with contentEditable) ─────────────
-  const handleFormatBold      = () => { textareaRef.current?.focus(); document.execCommand('bold',      false); };
-  const handleFormatItalic    = () => { textareaRef.current?.focus(); document.execCommand('italic',    false); };
-  const handleFormatUnderline = () => { textareaRef.current?.focus(); document.execCommand('underline', false); };
+  const handleFormatBold      = () => editorRef.current?.toggleBold();
+  const handleFormatItalic    = () => editorRef.current?.toggleItalic();
+  const handleFormatUnderline = () => editorRef.current?.toggleUnderline();
+  const handleFormatBullet    = () => editorRef.current?.toggleBullet();
 
   const handleFormatLink = () => {
-    // Save the current selection so we can restore it after the dialog opens
-    const sel = window.getSelection();
-    savedRangeRef.current = sel?.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+    // No manual selection bookkeeping: extendMarkRange re-derives the range
+    // from the stored selection when the command runs.
     setLinkUrl('');
     setShowLinkDialog(true);
   };
 
   const confirmLink = () => {
-    const url = linkUrl.trim();
-    if (!url) { setShowLinkDialog(false); return; }
-    const href = url.startsWith('http') ? url : `https://${url}`;
     setShowLinkDialog(false);
-    textareaRef.current?.focus();
-    // Restore saved selection then insert link
-    if (savedRangeRef.current) {
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(savedRangeRef.current);
-    }
-    document.execCommand('createLink', false, href);
-    // Make links open in new tab
-    textareaRef.current?.querySelectorAll('a').forEach(a => a.setAttribute('target', '_blank'));
-    setReplyText(textareaRef.current?.innerText || '');
+    editorRef.current?.setLink(linkUrl.trim());
   };
 
   // ── Attachment helpers ───────────────────────────────────────────────────────
@@ -221,7 +277,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
     const box = messagesBoxRef.current;
     if (box) box.scrollTo({ top: box.scrollHeight, behavior: 'smooth' });
   };
-  const textareaRef     = useRef(null);
+  const editorRef       = useRef(null);
   const tplRef          = useRef(null);
   const attachInputRef  = useRef(null);
 
@@ -238,25 +294,44 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
     if (thread?.id) onThreadUpdate?.(thread.id, updates);
   };
 
-  const handlePriorityChange = async (priority) => {
-    applyUpdate({ priority });
-    await updateThread(thread.id, { priority });
+  // Optimistic writes must be able to undo themselves. Previously these
+  // awaited the request with no catch, so a rejection left the UI showing a
+  // change that never reached the server.
+  const applyWithRollback = async (updates, previous, failureMessage) => {
+    applyUpdate(updates);
+    try {
+      await updateThread(thread.id, updates);
+      return true;
+    } catch (err) {
+      applyUpdate(previous);
+      toast.error(failureMessage, { detail: errorMessage(err) });
+      return false;
+    }
+  };
+
+  const handlePriorityChange = (priority) => {
+    applyWithRollback(
+      { priority },
+      { priority: thread.priority || 'normal' },
+      "Couldn't change priority",
+    );
   };
 
   const handleAddTag = async () => {
     const tag = tagInput.trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
     if (!tag || threadTags.includes(tag)) { setTagInput(''); setShowTagInput(false); return; }
-    const newTags = [...threadTags, tag];
-    applyUpdate({ tags: newTags });  // store as array — threadTags parser handles both
-    await updateThread(thread.id, { tags: newTags });
     setTagInput('');
     setShowTagInput(false);
+    // store as array — the threadTags parser handles both shapes
+    await applyWithRollback({ tags: [...threadTags, tag] }, { tags: threadTags }, `Couldn't add #${tag}`);
   };
 
   const handleRemoveTag = async (tag) => {
-    const newTags = threadTags.filter(t => t !== tag);
-    applyUpdate({ tags: newTags });
-    await updateThread(thread.id, { tags: newTags });
+    await applyWithRollback(
+      { tags: threadTags.filter(t => t !== tag) },
+      { tags: threadTags },
+      `Couldn't remove #${tag}`,
+    );
   };
 
   // Land on the newest message when a thread is first opened — and never move
@@ -273,7 +348,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
 
   // Reset compose on thread change
   useEffect(() => {
-    if (textareaRef.current) textareaRef.current.innerHTML = '';
+    editorRef.current?.clear();
     setReplyText('');
     setIsNote(false);
     setShowTemplates(false);
@@ -303,19 +378,11 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
     };
   }, []);
 
-  const handleKeyDown = (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-      e.preventDefault();
-      handleSend();
-    }
-    if (e.key === '/' && textareaRef.current?.innerText.trim() === '') {
-      e.preventDefault();
-      setShowTemplates(true);
-    }
-  };
+  // ⌘↵ and `/` now live in RichEditor, which knows whether the document is
+  // empty without reaching into a DOM node's innerText.
 
   const handleSend = async () => {
-    const htmlBody = textareaRef.current?.innerHTML || '';
+    const htmlBody = editorRef.current?.getHTML() || '';
     if (!replyText.trim() || sending) return;
     const ok = await reply({
       body: htmlBody,
@@ -359,7 +426,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
     }
     // Put the recalled text back so the agent can fix and re-send.
     setEditorContent(res.body || '');
-    textareaRef.current?.focus();
+    editorRef.current?.focus();
   };
 
   const handleUseTemplate = async (tpl) => {
@@ -388,21 +455,32 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
     };
     // Convert plain text template to HTML (preserve line breaks)
     const resolved = resolveTemplate(tpl.body, vars);
-    const html = resolved.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    // Template bodies are plain text with variables already substituted —
+    // escape before turning newlines into markup, so a customer name
+    // containing "<" can't inject anything.
+    const html = escapeHtml(resolved).replace(/\n/g, '<br>');
     setEditorContent(html);
     setShowTemplates(false);
     await trackTemplateUse(tpl.id);
-    textareaRef.current?.focus();
+    editorRef.current?.focus();
   };
 
-  const handleStatusChange = async (e) => {
-    const status = e.target.value;
+  const handleStatusMenuChange = async (status) => {
+    if (status === thread.status) return;
     if (status === 'resolved') {
       openResolveModal();
       return;
     }
+    // applyUpdate writes the thread AND the sidebar row; patchStatus only
+    // rolls the thread back, so the revert has to go through applyUpdate.
+    const previous = { status: thread.status, status_changed_at: thread.status_changed_at };
     applyUpdate({ status, status_changed_at: new Date().toISOString() });
-    await patchStatus(status);
+
+    const res = await patchStatus(status);
+    if (!res?.ok) {
+      applyUpdate(previous);
+      toast.error("Couldn't change status", { detail: errorMessage(res?.error) });
+    }
   };
 
   const handleResolve = async () => {
@@ -418,10 +496,13 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
         resolved_at: data.resolved_at,
       });
       setShowResolveModal(false);
-      // Save resolver name for next time
-      localStorage.setItem('branddesk_resolver_name', resolveForm.resolved_by.trim());
       // Reload thread messages so the resolution system bubble appears
       await reload();
+      toast.success('Ticket resolved');
+    } catch (err) {
+      // Without this the modal just sat there with the spinner cleared and no
+      // explanation — the agent had no way to tell it had failed.
+      toast.error("Couldn't resolve this ticket", { detail: errorMessage(err) });
     } finally {
       setResolving(false);
     }
@@ -443,7 +524,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
   if (!thread) return null;
 
   const statusCfg   = STATUS_CONFIG[thread.status]   || STATUS_CONFIG.open;
-  const priorityCfg = PRIORITY_CONFIG[thread.priority] || PRIORITY_CONFIG.normal;
+
   const brandColor  = getBrandColor(thread.brand);
   const rawName     = thread.customer_name || '';
   const isStoreName = rawName.toLowerCase().includes('shopify') || rawName.toLowerCase().includes(' store');
@@ -452,7 +533,11 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
 
   return (
     <div className={styles.root}>
-      {/* Thread header — collapses to a single WhatsApp-style row on mobile */}
+      {/* Thread header — three rows with distinct jobs:
+          1. who this is + how urgent it is (SLA was previously nowhere in the
+             thread view at all, only in the list row)
+          2. the pinned ticket facts an agent re-reads constantly
+          3. the controls, with Resolve promoted out of the status dropdown */}
       <div className={`${styles.header} ${onBack && !headerDetailsOpen ? styles.headerCollapsed : ''}`}>
         <div className={styles.headerTop}>
           {onBack && (
@@ -462,15 +547,19 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
               </svg>
             </button>
           )}
-          {onBack && (
-            <div className={styles.headerAvatar} style={{ background: brandColor.bg, color: brandColor.text }}>
-              {getInitials(displayName) || '?'}
-            </div>
-          )}
+          <div className={styles.headerAvatar} style={{ background: brandColor.bg, color: brandColor.text }}>
+            {getInitials(displayName) || '?'}
+          </div>
           <div className={styles.headerCustomer}>
-            <span className={styles.headerName}>{displayName}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div className={styles.headerNameRow}>
+              <span className={styles.headerName}>{displayName}</span>
+              <SlaChip status={thread.sla_status} label={thread.sla_label} />
+            </div>
+            <div className={styles.headerSubRow}>
               <span className={styles.headerEmail}>{thread.customer_email}</span>
+              <span className={styles.brandBadge} style={{ background: brandColor.bg, color: brandColor.text }}>
+                {thread.brand}
+              </span>
               {sinceLabel && (
                 <span className={styles.statusSince} style={{ color: statusCfg.color, background: statusCfg.bg }}>
                   {sinceLabel}
@@ -478,102 +567,65 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
               )}
             </div>
           </div>
-          {(onOpenCustomer || onBack) && (
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-              {onOpenCustomer && (
-                <button className={styles.customerBtn} onClick={onOpenCustomer} aria-label="Customer details">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-                  </svg>
-                </button>
-              )}
-              {onBack && (
-                <button
-                  className={`${styles.detailsToggle} ${headerDetailsOpen ? styles.detailsToggleOpen : ''}`}
-                  onClick={() => setHeaderDetailsOpen(v => !v)}
-                  aria-label={headerDetailsOpen ? 'Hide ticket details' : 'Show ticket details'}
-                >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M6 9l6 6 6-6" />
-                  </svg>
-                  {!headerDetailsOpen && actionSummary.open > 0 && <span className={styles.toggleDot} />}
-                </button>
-              )}
-            </div>
-          )}
-          <div className={styles.headerControls} style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-            {/* Priority selector */}
-            <select
-              className={styles.prioritySelect}
-              value={thread.priority || 'normal'}
-              onChange={e => handlePriorityChange(e.target.value)}
-              style={{ color: priorityCfg.color }}
-              title="Set priority"
-            >
-              <option value="urgent">🔴 Urgent</option>
-              <option value="normal">⚪ Normal</option>
-              <option value="low">🔵 Low</option>
-            </select>
 
-            {/* Status selector — intercepts "resolved" to show modal */}
-            <select
-              className={styles.statusSelect}
-              value={thread.status}
-              onChange={handleStatusChange}
-              style={{ color: statusCfg.color, borderColor: statusCfg.border, background: statusCfg.bg }}
-            >
-              <option value="open">Open</option>
-              <option value="in_progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-            </select>
+          <div className={styles.headerRight}>
+            {onOpenCustomer && (
+              <button className={styles.customerBtn} onClick={onOpenCustomer} aria-label="Customer details">
+                <Icon name="user" size={18} />
+              </button>
+            )}
+            {onBack && (
+              <button
+                className={`${styles.detailsToggle} ${headerDetailsOpen ? styles.detailsToggleOpen : ''}`}
+                onClick={() => setHeaderDetailsOpen(v => !v)}
+                aria-expanded={headerDetailsOpen}
+                aria-label={headerDetailsOpen ? 'Hide ticket details' : 'Show ticket details'}
+              >
+                <Icon name="chevron" size={16} />
+                {!headerDetailsOpen && actionSummary.open > 0 && <span className={styles.toggleDot} />}
+              </button>
+            )}
+            {/* Context drawer toggle — the third column used to be a fixed
+                320–480px cost with no way to reclaim it on desktop. */}
+            {onToggleContext && (
+              <button
+                className={styles.iconToggle}
+                onClick={onToggleContext}
+                aria-pressed={contextOpen}
+                aria-label={contextOpen ? 'Hide customer panel' : 'Show customer panel'}
+                title={`${contextOpen ? 'Hide' : 'Show'} customer panel (⌘\\)`}
+              >
+                <Icon name="panel" size={15} />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Meta row */}
-        <div className={styles.headerMeta}>
-          <span className={styles.brandBadge} style={{ background: brandColor.bg, color: brandColor.text }}>
-            {thread.brand}
+        {/* Facts strip — ids, issue and age on one scannable line. These used
+            to require opening the third column to read. */}
+        <div className={styles.factsStrip}>
+          {thread.ticket_id && <span className={styles.factId}>{thread.ticket_id}</span>}
+          {thread.order_number && (
+            <span className={styles.factId}>#{displayOrderId(thread.order_id_resolved || thread.order_number)}</span>
+          )}
+          {thread.issue_category && (
+            <span className={styles.fact}>
+              {thread.issue_category}
+              {thread.sub_issue && thread.sub_issue !== thread.issue_category ? ` / ${thread.sub_issue}` : ''}
+            </span>
+          )}
+          <span className={styles.factMuted} title={formatFullTime(thread.created_at)}>
+            Created {formatFullTime(thread.created_at)}
           </span>
-          {thread.ticket_id && (
-            <><span className={styles.metaSep}>·</span>
-            <span className={styles.ticketIdBadge}>{thread.ticket_id}</span></>
-          )}
-          <span className={styles.metaSep}>·</span>
-          <span className={styles.metaTime}>{formatFullTime(thread.created_at)}</span>
-          {actionSummary.total > 0 && (
-            <>
-              <span className={styles.metaSep}>·</span>
-              <button
-                className={`${styles.actionBadge} ${actionSummary.open > 0 ? styles.actionBadgeOpen : ''} ${showActions ? styles.actionBadgeActive : ''}`}
-                onClick={() => setShowActions(v => !v)}
-                title={showActions ? 'Hide actions' : 'View actions logged for this ticket'}
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
-                  <rect x="9" y="3" width="6" height="4" rx="1"/>
-                  <path d="M9 12h6M9 16h4"/>
-                </svg>
-                {actionSummary.total} action{actionSummary.total > 1 ? 's' : ''}
-                {actionSummary.open > 0 ? ` · ${actionSummary.open} open` : ' · closed'}
-                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                  style={{ transform: showActions ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
-                  <path d="M6 9l6 6 6-6"/>
-                </svg>
-              </button>
-            </>
-          )}
-        </div>
 
-        {/* Tags row */}
-        <div className={styles.tagsRow}>
           {threadTags.map(tag => (
             <span key={tag} className={styles.tagChip}>
               #{tag}
-              <button className={styles.tagRemove} onClick={() => handleRemoveTag(tag)}>✕</button>
+              <button className={styles.tagRemove} onClick={() => handleRemoveTag(tag)} aria-label={`Remove tag ${tag}`}>✕</button>
             </span>
           ))}
           {showTagInput ? (
-            <div className={styles.tagInputWrap}>
+            <span className={styles.tagInputWrap}>
               <input
                 autoFocus
                 className={styles.tagInput}
@@ -581,11 +633,71 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
                 onChange={e => setTagInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleAddTag(); if (e.key === 'Escape') setShowTagInput(false); }}
                 placeholder="tag name"
+                aria-label="New tag"
               />
               <button className={styles.tagSave} onClick={handleAddTag}>Add</button>
-            </div>
+            </span>
           ) : (
-            <button className={styles.addTagBtn} onClick={() => setShowTagInput(true)}>+ tag</button>
+            <button className={styles.addTagBtn} onClick={() => setShowTagInput(true)}>
+              <Icon name="tag" size={11} /> tag
+            </button>
+          )}
+
+          {actionSummary.total > 0 && (
+            <button
+              className={`${styles.actionBadge} ${actionSummary.open > 0 ? styles.actionBadgeOpen : ''} ${showActions ? styles.actionBadgeActive : ''}`}
+              onClick={() => setShowActions(v => !v)}
+              aria-expanded={showActions}
+            >
+              {actionSummary.total} action{actionSummary.total > 1 ? 's' : ''}
+              {actionSummary.open > 0 ? ` · ${actionSummary.open} open` : ' · closed'}
+              <Icon name="chevron" size={9} className={showActions ? styles.badgeChevOpen : undefined} />
+            </button>
+          )}
+        </div>
+
+        {/* Controls — Resolve is a destination state with its own form, so it
+            is a button, not an option hidden inside a dropdown that snapped
+            back when you cancelled. */}
+        <div className={styles.headerControls}>
+          <Menu
+            label="Assignee"
+            value={thread.assignee_id ?? 'unassigned'}
+            options={assigneeOptions}
+            onChange={handleAssigneeChange}
+            compact
+          />
+          <Menu
+            label="Priority"
+            value={thread.priority || 'normal'}
+            options={PRIORITY_OPTIONS}
+            onChange={handlePriorityChange}
+            compact
+          />
+          <Menu
+            label="Status"
+            value={thread.status}
+            options={STATUS_OPTIONS}
+            onChange={handleStatusMenuChange}
+            tone={{ color: statusCfg.color, bg: statusCfg.bg, border: statusCfg.border }}
+            compact
+          />
+          <Menu
+            label="Snooze"
+            value={thread.snoozed_until ? 'snoozed' : 'none'}
+            options={
+              thread.snoozed_until
+                ? [{ value: 'snoozed', label: 'Snoozed', dot: '#7c3aed' }, ...SNOOZE_PRESETS]
+                : SNOOZE_PRESETS
+            }
+            onChange={handleSnooze}
+            compact
+          />
+          {thread.status !== 'resolved' && (
+            <button className={styles.resolveBtn} onClick={openResolveModal}>
+              <Icon name="checkCircle" size={14} />
+              Resolve
+            </button>
           )}
         </div>
       </div>
@@ -713,91 +825,104 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
           </div>
         )}
 
-        {/* Toolbar (collapsible on mobile via .composeTools) */}
-        <div className={`${styles.composeTools} ${showComposeTools ? styles.composeToolsOpen : ''}`}>
-        <div className={styles.toolbar}>
+        {/* Reply vs note is the highest-consequence choice in the app — a
+            candid internal note sent to a customer. It was a toggle button
+            guarded by a 1px amber border; it's now a segmented control and
+            the whole composer changes colour with it. */}
+        <div className={styles.modeSwitch} role="radiogroup" aria-label="Reply mode">
           <button
-            className={`${styles.toolBtn} ${showTemplates ? styles.toolBtnActive : ''}`}
-            onClick={() => setShowTemplates(v => !v)}
+            type="button"
+            role="radio"
+            aria-checked={!isNote}
+            className={`${styles.modeBtn} ${!isNote ? styles.modeBtnActiveReply : ''}`}
+            onClick={() => setIsNote(false)}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-              <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
-            </svg>
-            Templates
+            <Icon name="send" size={13} />
+            Reply to customer
           </button>
           <button
-            className={`${styles.toolBtn} ${isNote ? styles.toolBtnNote : ''}`}
-            onClick={() => setIsNote(v => !v)}
+            type="button"
+            role="radio"
+            aria-checked={isNote}
+            className={`${styles.modeBtn} ${isNote ? styles.modeBtnActiveNote : ''}`}
+            onClick={() => setIsNote(true)}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-            {isNote ? 'Internal note' : 'Add note'}
+            <Icon name="lock" size={13} active={isNote} />
+            Internal note
           </button>
-          <button
-            className={`${styles.toolBtn} ${styles.toolBtnAction}`}
-            onClick={() => setShowActionModal(true)}
-            title="Log exchange, return, or alternate product action"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
-              <rect x="9" y="3" width="6" height="4" rx="1"/>
-              <path d="M12 12v4m-2-2h4"/>
-            </svg>
-            Action
-          </button>
-          <button
-            className={`${styles.toolBtn} ${styles.hideMobile}`}
-            onClick={() => setShowTemplateEditor(true)}
-            title="Edit templates"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
-            </svg>
-            Edit templates
-          </button>
-          <span className={styles.replyingAs}>Replying as {thread.brand_email}</span>
         </div>
 
-        {/* Formatting + attachment toolbar */}
-        <div className={styles.formatBar}>
-          <button className={styles.fmtBtn} title="Bold" onMouseDown={e => { e.preventDefault(); handleFormatBold(); }}>
-            <strong>B</strong>
-          </button>
-          <button className={styles.fmtBtn} title="Italic" onMouseDown={e => { e.preventDefault(); handleFormatItalic(); }}>
-            <em>I</em>
-          </button>
-          <button className={styles.fmtBtn} title="Underline" onMouseDown={e => { e.preventDefault(); handleFormatUnderline(); }}>
-            <u>U</u>
-          </button>
-          <button className={styles.fmtBtn} title="Hyperlink" onMouseDown={e => { e.preventDefault(); handleFormatLink(); }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
-              <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
-            </svg>
-          </button>
-          <div className={styles.fmtSep} />
-          <button
-            className={styles.fmtBtn}
-            title="Attach file"
-            onClick={() => attachInputRef.current?.click()}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
-            </svg>
-            Attach
-          </button>
-          <input
-            ref={attachInputRef}
-            type="file"
-            multiple
-            accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
-            style={{ display: 'none' }}
-            onChange={handleAttachFiles}
-          />
-        </div>
+        {/* One toolbar. Was two rows plus a five-button bottom strip. */}
+        <div className={`${styles.composeTools} ${showComposeTools ? styles.composeToolsOpen : ''}`}>
+          <div className={styles.toolbar}>
+            <button
+              className={`${styles.toolBtn} ${showTemplates ? styles.toolBtnActive : ''}`}
+              onClick={() => setShowTemplates(v => !v)}
+              aria-expanded={showTemplates}
+            >
+              <Icon name="note" size={13} />
+              Templates
+            </button>
+
+            <span className={styles.fmtSep} />
+
+            <button className={styles.fmtBtn} title="Bold (⌘B)" aria-label="Bold"
+              onMouseDown={e => { e.preventDefault(); handleFormatBold(); }}><strong>B</strong></button>
+            <button className={styles.fmtBtn} title="Italic (⌘I)" aria-label="Italic"
+              onMouseDown={e => { e.preventDefault(); handleFormatItalic(); }}><em>I</em></button>
+            <button className={styles.fmtBtn} title="Underline (⌘U)" aria-label="Underline"
+              onMouseDown={e => { e.preventDefault(); handleFormatUnderline(); }}><u>U</u></button>
+            <button className={styles.fmtBtn} title="Insert link" aria-label="Insert link"
+              onMouseDown={e => { e.preventDefault(); handleFormatLink(); }}><Icon name="link" size={13} /></button>
+
+            <button className={styles.fmtBtn} title="Attach file" aria-label="Attach file"
+              onClick={() => attachInputRef.current?.click()}><Icon name="paperclip" size={13} /></button>
+            <input
+              ref={attachInputRef}
+              type="file"
+              multiple
+              accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
+              style={{ display: 'none' }}
+              onChange={handleAttachFiles}
+            />
+
+            {/* One AI control. There were two competing grammar systems: a
+                server rewrite and a direct browser call to LanguageTool's
+                public API, with different UIs and no stated difference. */}
+            {!isNote && (
+              <div className={styles.aiWrap}>
+                {aiOriginal ? (
+                  <button
+                    className={styles.toolBtn}
+                    onClick={() => { setEditorContent(aiOriginal); setAiOriginal(null); }}
+                  >
+                    <Icon name="history" size={13} /> Undo rewrite
+                  </button>
+                ) : (
+                  <Menu
+                    label="Improve"
+                    value=""
+                    compact
+                    align="end"
+                    options={[
+                      { value: 'grammar',      label: 'Fix grammar & spelling' },
+                      { value: 'professional', label: 'Rewrite as professional' },
+                    ]}
+                    onChange={handleAiImprove}
+                  />
+                )}
+              </div>
+            )}
+
+            <button
+              className={`${styles.toolBtn} ${styles.toolBtnAction}`}
+              onClick={() => setShowActionModal(true)}
+              title="Log exchange, return, or alternate product action"
+            >
+              <Icon name="plus" size={13} />
+              Log action
+            </button>
+          </div>
         </div>{/* /composeTools */}
 
         {/* Link dialog */}
@@ -817,15 +942,6 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
           </div>
         )}
 
-        {showTemplateEditor && (
-          <TemplateEditor
-            onClose={() => {
-              setShowTemplateEditor(false);
-              fetchTemplates().then(({ data }) => setTemplates(data.grouped || {})).catch(() => {});
-            }}
-          />
-        )}
-
         <div className={styles.textareaWrap}>
           <button
             className={`${styles.composeToggle} ${showComposeTools ? styles.composeToggleOpen : ''}`}
@@ -837,16 +953,19 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
               <path d="M12 5v14M5 12h14" />
             </svg>
           </button>
-          <div
-            ref={textareaRef}
-            contentEditable
-            suppressContentEditableWarning
-            className={`${styles.textarea} ${styles.textareaEditor} ${isNote ? styles.textareaNote : ''} ${isExpanded ? styles.textareaExpanded : ''}`}
-            onInput={e => { setReplyText(e.currentTarget.innerText); setGrammarMatches([]); }}
-            onKeyDown={handleKeyDown}
-            data-placeholder={isNote ? 'Add an internal note — not sent to customer…' : 'Type your reply… (press / for templates, ⌘↵ to send)'}
-            spellCheck={true}
+          <Suspense fallback={<div className={styles.editorLoading} aria-busy="true">Loading editor…</div>}>
+          <RichEditor
+            ref={editorRef}
+            isNote={isNote}
+            expanded={isExpanded}
+            placeholder={isNote
+              ? 'Add an internal note — not sent to the customer…'
+              : 'Type your reply… (press / for templates, ⌘↵ to send)'}
+            onChange={setReplyText}
+            onSubmit={handleSend}
+            onSlash={() => setShowTemplates(true)}
           />
+          </Suspense>
           <button
             className={styles.expandBtn}
             title={isExpanded ? 'Collapse' : 'Expand'}
@@ -857,7 +976,8 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
               : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 10l6 6 6-6"/></svg>
             }
           </button>
-          {/* Mobile-only send column: [✨ make professional / ↩ undo] above [➤ send] */}
+          {/* Mobile send column: quick rewrite above send. Emoji swapped for
+              the shared icon set so they inherit colour, size and weight. */}
           <div className={styles.mobileSendCol}>
             {!isNote && (replyText.trim().length >= 10 || aiOriginal) && (
               <button
@@ -867,11 +987,13 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
                   else handleAiImprove('professional');
                 }}
                 disabled={!!aiLoading || sending}
-                aria-label={aiOriginal ? 'Undo AI rewrite' : 'Make professional'}
+                aria-label={aiOriginal ? 'Undo AI rewrite' : 'Rewrite as professional reply'}
                 title={aiOriginal ? 'Undo AI rewrite' : 'Rewrite as professional reply'}
                 type="button"
               >
-                {aiLoading === 'professional' ? '…' : aiOriginal ? '↩' : '✨'}
+                {aiLoading === 'professional'
+                  ? <span className={styles.mobileSendDots}>…</span>
+                  : <Icon name={aiOriginal ? 'history' : 'sparkles'} size={18} />}
               </button>
             )}
             <button
@@ -884,10 +1006,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
             >
               {sending
                 ? <span className={styles.mobileSendDots}>…</span>
-                : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" />
-                  </svg>
-              }
+                : <Icon name={isNote ? 'lock' : 'send'} size={20} strokeWidth={2.2} />}
             </button>
           </div>
         </div>
@@ -908,96 +1027,19 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
           </div>
         )}
 
-        {/* Grammar suggestions */}
-        {grammarMatches.length > 0 && (
-          <div className={styles.grammarPanel}>
-            <div className={styles.grammarHeader}>
-              <span className={styles.grammarTitle}>
-                {grammarMatches.length} suggestion{grammarMatches.length > 1 ? 's' : ''}
-              </span>
-              <button className={styles.grammarDismissAll} onClick={() => setGrammarMatches([])}>
-                Dismiss all
-              </button>
-            </div>
-            {grammarMatches.map((match, i) => (
-              <div key={i} className={styles.grammarMatch}>
-                <div className={styles.grammarMatchTop}>
-                  <span className={styles.grammarError}>
-                    "{replyText.slice(match.offset, match.offset + match.length)}"
-                  </span>
-                  <span className={styles.grammarArrow}>→</span>
-                  <span className={styles.grammarFix}>
-                    "{match.replacements[0]?.value}"
-                  </span>
-                  {match.replacements.length > 1 && (
-                    <span className={styles.grammarMore}>
-                      +{match.replacements.length - 1} more
-                    </span>
-                  )}
-                </div>
-                <div className={styles.grammarMatchBottom}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-                    <span className={styles.grammarMsg}>{match.message}</span>
-                    <span className={styles.grammarCategory}>{match.rule?.category?.name}</span>
-                  </div>
-                  <div className={styles.grammarActions}>
-                    <button className={styles.grammarApply} onClick={() => handleApplyFix(match)}>
-                      Apply
-                    </button>
-                    <button className={styles.grammarIgnore} onClick={() => handleDismissFix(match)}>
-                      Ignore
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
         <div className={styles.replyBottom}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span className={styles.hint}>
-              {isNote ? '⚠ Internal note' : '⌘↵ to send'}
-            </span>
-            {!isNote && replyText.trim().length >= 10 && (
-              <>
-                <button
-                  className={`${styles.aiBtn} ${aiLoading === 'grammar' ? styles.aiBtnLoading : ''}`}
-                  onClick={() => handleAiImprove('grammar')}
-                  disabled={!!aiLoading}
-                  title="Fix grammar and spelling"
-                >
-                  {aiLoading === 'grammar' ? '…' : '✓ Fix grammar'}
-                </button>
-                <button
-                  className={`${styles.aiBtn} ${styles.aiBtnPro} ${aiLoading === 'professional' ? styles.aiBtnLoading : ''}`}
-                  onClick={() => handleAiImprove('professional')}
-                  disabled={!!aiLoading}
-                  title="Rewrite as professional customer support reply"
-                >
-                  {aiLoading === 'professional' ? '…' : '✨ Make professional'}
-                </button>
-                {aiOriginal && (
-                  <button
-                    className={styles.aiUndoBtn}
-                    onClick={() => { setEditorContent(aiOriginal); setAiOriginal(null); }}
-                    title="Undo AI change"
-                  >
-                    ↩ Undo
-                  </button>
-                )}
-                {replyText.trim().length >= 10 && (
-                  <button
-                    className={`${styles.grammarBtn} ${grammarLoading ? styles.grammarBtnLoading : ''} ${grammarMatches.length > 0 ? styles.grammarBtnActive : ''}`}
-                    onClick={handleGrammarCheck}
-                    disabled={grammarLoading || !!aiLoading}
-                    title="Detailed grammar check with LanguageTool"
-                  >
-                    {grammarLoading ? '…' : grammarMatches.length > 0 ? `${grammarMatches.length} issues` : '⚙ Grammar check'}
-                  </button>
-                )}
-              </>
+          <div className={styles.replyBottomLeft}>
+            {isNote ? (
+              <span className={styles.noteHint}>
+                <Icon name="lock" size={12} active />
+                Internal only — the customer never sees this
+              </span>
+            ) : (
+              <span className={styles.hint}>
+                Replying as <strong>{thread.brand_email}</strong> · ⌘↵ to send
+              </span>
             )}
+            {aiLoading && <span className={styles.aiWorking}>Rewriting…</span>}
           </div>
           <button
             className={`${styles.sendBtn} ${isNote ? styles.sendBtnNote : ''}`}
@@ -1005,6 +1047,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
             disabled={!replyText.trim() || sending || !!manualPending}
             title={manualPending ? 'Waiting for the ticket email to send' : undefined}
           >
+            {!sending && <Icon name={isNote ? 'lock' : 'send'} size={14} />}
             {sending ? 'Sending…' : isNote ? 'Save note' : 'Send reply'}
           </button>
         </div>
@@ -1032,24 +1075,45 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
               <button className={styles.resolveClose} onClick={() => setShowResolveModal(false)}>✕</button>
             </div>
             <div className={styles.resolveBody}>
-              <p className={styles.resolveHint}>
-                Both fields are required before marking as resolved.
-              </p>
-              <label className={styles.resolveLabel}>Your name</label>
-              <input
-                className={styles.resolveInput}
-                placeholder="e.g. Keval"
-                value={resolveForm.resolved_by}
-                onChange={e => setResolveForm(f => ({ ...f, resolved_by: e.target.value }))}
-                autoFocus
-              />
-              <label className={styles.resolveLabel}>Resolution note</label>
+              {/* Resolver identity is the signed-in user. Typing it by hand is
+                  what produced the "N spellings merged" mess in Insights. */}
+              <label className={styles.resolveLabel} htmlFor="resolve-by">Resolved by</label>
+              {overrideResolver ? (
+                <input
+                  id="resolve-by"
+                  className={styles.resolveInput}
+                  placeholder="Who resolved this?"
+                  value={resolveForm.resolved_by}
+                  onChange={e => setResolveForm(f => ({ ...f, resolved_by: e.target.value }))}
+                  autoFocus
+                />
+              ) : (
+                <div className={styles.resolverRow}>
+                  <span className={styles.resolverAvatar} aria-hidden="true">
+                    {(user?.name || '?')[0].toUpperCase()}
+                  </span>
+                  <span className={styles.resolverName}>{user?.name}</span>
+                  <button
+                    type="button"
+                    className={styles.resolverSwap}
+                    onClick={() => { setResolveForm(f => ({ ...f, resolved_by: '' })); setOverrideResolver(true); }}
+                  >
+                    Someone else?
+                  </button>
+                </div>
+              )}
+
+              <label className={styles.resolveLabel} htmlFor="resolve-note">
+                Resolution note <span className={styles.reqMark}>required</span>
+              </label>
               <textarea
+                id="resolve-note"
                 className={styles.resolveTextarea}
                 rows={3}
                 placeholder="What was done to resolve this? e.g. Refund processed, order reshipped, tracking shared…"
                 value={resolveForm.resolution_note}
                 onChange={e => setResolveForm(f => ({ ...f, resolution_note: e.target.value }))}
+                autoFocus={!overrideResolver}
               />
             </div>
             <div className={styles.resolveActions}>
@@ -1117,7 +1181,7 @@ function MessageBubble({ message, thread, grouped, now, onUndoSend, onRetrySend,
       <div className={`${styles.bubble} ${isOutbound ? styles.bubbleOut : styles.bubbleIn} ${isNote ? styles.bubbleNote : ''} ${pending && pending.status !== 'failed' ? styles.bubblePending : ''} ${pending?.status === 'failed' ? styles.bubbleFailed : ''}`}>
         {message.body && (
           isOutbound
-            ? <p className={styles.bubbleText} dangerouslySetInnerHTML={{ __html: message.body }} />
+            ? <p className={styles.bubbleText} dangerouslySetInnerHTML={{ __html: sanitizeEmailHtml(message.body) }} />
             : <p className={styles.bubbleText}>{message.body}</p>
         )}
         {message.attachments?.length > 0 && (

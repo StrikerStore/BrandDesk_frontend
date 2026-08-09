@@ -184,16 +184,13 @@
     width: 100%;
     max-width: 100%;
     max-height: 92dvh;
-    border: 3px solid var(--nb-ink);
     border-bottom: none;
     border-radius: 22px 22px 0 0;
-    box-shadow: 0 -6px 0 var(--nb-ink);
-  }
+ }
   .header {
     padding: 16px 18px 14px;
-    border-bottom: 3px solid var(--nb-ink);
-  }
-  .title { font-size: 19px; font-weight: 800; }
+ }
+  .title { font-size: 19px; font-weight: 600; }
   .closeBtn { font-size: 22px; min-width: 40px; min-height: 40px; }
 
   .body { padding: 18px 16px calc(20px + env(safe-area-inset-bottom)); gap: 16px; }
@@ -202,20 +199,123 @@
   .input, .select, .textarea {
     min-height: 48px;
     font-size: 16px;
-    border: 2px solid var(--nb-ink);
     border-radius: 12px;
-  }
-  .input:focus, .select:focus, .textarea:focus { box-shadow: var(--nb-shadow-sm); }
+ }
   .textarea { min-height: 120px; }
 
   .footer { flex-direction: column-reverse; gap: 10px; padding-top: 6px; }
   .cancelBtn, .submitBtn {
     width: 100%;
     min-height: 52px;
-    border: 2px solid var(--nb-ink);
     border-radius: 14px;
     font-size: 15px;
-    font-weight: 800;
-  }
-  .submitBtn { background: var(--nb-mint); color: var(--nb-ink); }
+    font-weight: 600;
+ }
+}
+
+/* ============================================================
+   PHASE 4 — grouped form, per-field errors, draft recovery
+   Nine required fields in one flat column, validated sequentially
+   so you discovered problems one submit at a time.
+   ============================================================ */
+
+.body { display: flex; flex-direction: column; gap: 18px; }
+
+.fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.legend {
+  padding: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.label { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+.req { color: var(--red); }
+
+.fieldHint  { font-size: 11px; color: var(--text-tertiary); line-height: 1.4; }
+.fieldError { font-size: 11.5px; color: var(--red-text); font-weight: 500; }
+
+.inputError { border-color: #fca5a5 !important; background: var(--red-light); }
+
+.draftNote {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 14px;
+  padding: 8px 11px;
+  border-radius: var(--radius-md);
+  background: var(--accent-light);
+  border: 1px solid #93c5fd;
+  color: var(--accent-text);
+  font-size: 12.5px;
+}
+
+.draftClear {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent-text);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+}
+.draftClear:hover { background: rgba(255, 255, 255, 0.7); }
+
+/* Raising a duplicate for an order that already has an open ticket is common
+   and expensive; the warning arrives on blur, not after submit. */
+.dupeWarn {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 8px 11px;
+  border-radius: var(--radius-md);
+  background: var(--amber-light);
+  border: 1px solid #fcd34d;
+  color: var(--amber-text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.errorSummary {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--red-text);
+}
+
+.cancelBtn {
+  font-size: 13px;
+  padding: 7px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-md);
+  color: var(--text-secondary);
+  background: var(--surface);
+}
+.cancelBtn:hover { border-color: var(--border-strong); color: var(--text-primary); }
+
+.submitBtn {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 18px;
+  border-radius: var(--radius-md);
+  background: var(--accent);
+  color: #fff;
+}
+.submitBtn:hover:not(:disabled) { opacity: 0.9; }
+.submitBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+@media (max-width: 768px) {
+  .row { grid-template-columns: 1fr; }
 }

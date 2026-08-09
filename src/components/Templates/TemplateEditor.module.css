@@ -1,22 +1,24 @@
+/* Page, not modal — templates are a library you visit, not a per-reply popup
+   opened from inside the composer toolbar. */
 .overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.35);
+  height: 100%;
+  background: var(--bg);
+  padding: 20px;
   display: flex;
-  align-items: center;
   justify-content: center;
-  z-index: 200;
+  overflow: hidden;
 }
 
 .modal {
   background: var(--surface);
-  border-radius: var(--radius-xl);
-  width: 820px;
-  max-width: 95vw;
-  max-height: 88vh;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 980px;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 

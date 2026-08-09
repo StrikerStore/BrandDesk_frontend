@@ -1,0 +1,31 @@
+.shell {
+  display: grid;
+  grid-template-areas: 'rail main';
+  grid-template-columns: 72px minmax(0, 1fr);
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.main {
+  grid-area: main;
+  min-width: 0;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Narrow: rail becomes a bottom bar, so the grid flips to rows and the
+   content pane sits above it. */
+@media (max-width: 768px) {
+  .shell {
+    grid-template-areas:
+      'main'
+      'rail';
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+    height: 100dvh;
+  }
+
+  .main { height: auto; min-height: 0; }
+}

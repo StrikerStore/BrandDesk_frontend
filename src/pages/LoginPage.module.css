@@ -127,48 +127,33 @@
   .root {
     min-height: 100dvh;
     padding: 20px;
-    background:
-      radial-gradient(circle at 1px 1px, rgba(26,26,26,0.06) 1px, transparent 0) 0 0 / 22px 22px,
-      var(--nb-cream);
-  }
+ }
   .card {
     padding: 32px 24px calc(32px + env(safe-area-inset-bottom));
     max-width: 100%;
-    border: 3px solid var(--nb-ink);
     border-radius: 20px;
-    box-shadow: 8px 8px 0 var(--nb-ink);
-  }
-  .logoText { font-size: 22px; font-weight: 800; }
-  .heading { font-size: 28px; font-weight: 800; }
+ }
+  .logoText { font-size: 22px; font-weight: 600; }
+  .heading { font-size: 28px; font-weight: 600; }
   .sub { font-size: 15px; }
 
   .input {
     min-height: 50px;
     font-size: 16px;
-    border: 2px solid var(--nb-ink);
     border-radius: 12px;
-  }
-  .input:focus {
-    box-shadow: var(--nb-shadow-sm);
-    background: var(--nb-yellow-soft);
-  }
+ }
   .eyeBtn { min-width: 44px; min-height: 44px; }
 
-  .error { border: 2px solid var(--nb-ink); background: var(--nb-coral); color: var(--nb-ink); font-weight: 600; }
+  .error { font-weight: 600; }
 
   .btn {
     min-height: 54px;
-    background: var(--nb-yellow);
-    color: var(--nb-ink);
-    border: 3px solid var(--nb-ink);
     border-radius: 14px;
     font-size: 16px;
-    font-weight: 800;
-    box-shadow: var(--nb-shadow);
+    font-weight: 600;
     transition: transform 0.08s ease, box-shadow 0.08s ease;
-  }
+ }
   .btn:active:not(:disabled) {
     transform: translate(2px, 2px);
-    box-shadow: var(--nb-shadow-sm);
-  }
+ }
 }

@@ -1,0 +1,39 @@
+.message {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.consequence {
+  margin-top: 6px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.cancel,
+.danger,
+.primary {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 16px;
+  border-radius: var(--radius-md);
+  transition: all 0.12s;
+}
+
+.cancel {
+  border: 1px solid var(--border-md);
+  color: var(--text-secondary);
+  background: var(--surface);
+}
+.cancel:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text-primary); }
+
+.danger  { background: var(--red);    color: #fff; }
+.primary { background: var(--accent); color: #fff; }
+
+.danger:hover:not(:disabled),
+.primary:hover:not(:disabled) { opacity: 0.88; }
+
+.cancel:disabled,
+.danger:disabled,
+.primary:disabled { opacity: 0.45; cursor: not-allowed; }

@@ -1,0 +1,91 @@
+.viewport {
+  position: fixed;
+  z-index: 900;                      /* above every modal (300) and overlay */
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column-reverse;    /* newest nearest the corner */
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 32px));
+  pointer-events: none;              /* let clicks through the empty gaps */
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  animation: toastIn 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.icon { flex-shrink: 0; display: flex; margin-top: 1px; }
+
+.text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+
+.message {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.detail {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.action {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-md);
+  color: var(--text-primary);
+  background: var(--surface-2);
+}
+.action:hover { border-color: var(--border-strong); }
+
+.close {
+  flex-shrink: 0;
+  display: flex;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+}
+.close:hover { color: var(--text-primary); background: var(--surface-2); }
+
+/* Variants — border + icon carry the meaning, never colour alone
+   (the icon shape differs per variant for colour-blind users). */
+.success { border-color: #86efac; background: var(--green-light); }
+.success .icon { color: var(--green-text); }
+
+.error { border-color: #fca5a5; background: var(--red-light); }
+.error .icon { color: var(--red-text); }
+
+.info { border-color: #93c5fd; background: var(--accent-light); }
+.info .icon { color: var(--accent-text); }
+
+.undo { border-color: var(--border-strong); background: var(--surface); }
+.undo .icon { color: var(--text-secondary); }
+
+@media (max-width: 768px) {
+  .viewport {
+    left: 12px;
+    right: 12px;
+    bottom: calc(12px + 64px + env(safe-area-inset-bottom)); /* clear the tab bar */
+    max-width: none;
+  }
+}

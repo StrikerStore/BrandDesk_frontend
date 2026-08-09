@@ -1271,7 +1271,7 @@
   .root {
     height: 100dvh;
     border-right: none;
-  }
+ }
 
   /* Header — WhatsApp-style single row, expandable details strip */
   .header {
@@ -1279,15 +1279,14 @@
     top: 0;
     z-index: 30;
     padding: calc(6px + env(safe-area-inset-top)) 12px 8px;
-    border-bottom: 3px solid var(--nb-ink);
     background: var(--surface);
-  }
+ }
   .headerTop {
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     margin-bottom: 6px;
-  }
+ }
   /* Row 1 = back · avatar · name/subtitle · icons; controls strip wraps to its own row when expanded */
   .headerCustomer { flex-basis: 0; }
   .headerControls { flex-basis: 100%; justify-content: flex-start; }
@@ -1305,11 +1304,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid var(--nb-ink);
     border-radius: 11px;
-    background: var(--nb-yellow);
-    color: var(--nb-ink);
-    box-shadow: var(--nb-shadow-sm);
+    color: var(--text-primary);
+    background: var(--surface-2);
   }
   .backBtn:active { transform: translate(1px, 1px); box-shadow: none; }
   .headerAvatar {
@@ -1317,16 +1314,15 @@
     width: 38px;
     height: 38px;
     border-radius: 50%;
-    border: 2px solid var(--nb-ink);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 13px;
-    font-weight: 800;
-  }
-  .headerName { font-size: 16px; font-weight: 800; }
+    font-weight: 600;
+ }
+  .headerName { font-size: 16px; font-weight: 600; }
   .headerEmail { display: none; } /* email lives in the customer sheet */
-  .statusSince { font-size: 11px; font-weight: 700; padding: 1px 8px; border: 1.5px solid rgba(26, 26, 26, 0.25); }
+  .statusSince { font-size: 11px; font-weight: 600; padding: 1px 8px; }
   .customerBtn {
     flex-shrink: 0;
     width: 38px;
@@ -1334,11 +1330,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid var(--nb-ink);
     border-radius: 11px;
-    background: var(--nb-lav);
-    color: var(--nb-ink);
-    box-shadow: var(--nb-shadow-sm);
+    color: var(--text-secondary);
+    background: var(--surface-2);
   }
   .customerBtn:active { transform: translate(1px, 1px); box-shadow: none; }
   .detailsToggle {
@@ -1348,17 +1342,15 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 2px solid var(--nb-ink);
     border-radius: 11px;
     background: var(--surface-2);
-    color: var(--nb-ink);
-    box-shadow: var(--nb-shadow-sm);
-  }
+ }
   .detailsToggle svg { transition: transform 0.15s ease; }
-  .detailsToggleOpen { background: var(--nb-peach); }
+  .detailsToggleOpen { background: var(--accent-light); color: var(--accent-text); }
   .detailsToggleOpen svg { transform: rotate(180deg); }
   .detailsToggle:active { transform: translate(1px, 1px); box-shadow: none; }
   .detailsToggle { position: relative; }
+  /* Signals unseen open actions while the header is collapsed. */
   .toggleDot {
     position: absolute;
     top: -4px;
@@ -1366,19 +1358,17 @@
     width: 11px;
     height: 11px;
     border-radius: 50%;
-    background: var(--nb-coral);
-    border: 1.5px solid var(--nb-ink);
+    background: var(--amber);
+    border: 2px solid var(--surface);
   }
 
   .prioritySelect, .statusSelect {
     min-height: 34px;
-    border: 2px solid var(--nb-ink) !important;
     border-radius: 10px;
     font-size: 12.5px;
-    font-weight: 700;
+    font-weight: 600;
     padding: 2px 10px;
-    box-shadow: var(--nb-shadow-sm);
-  }
+ }
 
   /* Meta + tags — horizontal scroll strips */
   .headerMeta, .tagsRow {
@@ -1386,16 +1376,14 @@
     overflow-x: auto;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
-  }
+ }
   .headerMeta::-webkit-scrollbar, .tagsRow::-webkit-scrollbar { display: none; }
   .headerMeta > *, .tagsRow > * { flex-shrink: 0; }
   .tagsRow { margin-top: 4px; min-height: 0; }
-  .brandBadge, .ticketIdBadge { border: 1.5px solid var(--nb-ink); font-weight: 700; }
-  .actionBadge { border: 2px solid var(--nb-ink); font-weight: 700; }
-  .tagChip { border: 1.5px solid var(--nb-ink); }
-  .addTagBtn { border: 1.5px dashed var(--nb-ink); color: var(--nb-ink); }
+  .brandBadge, .ticketIdBadge { font-weight: 600; }
+  .actionBadge { font-weight: 600; }
 
-  .actionsSection { max-height: 40vh; border-bottom: 3px solid var(--nb-ink); }
+  .actionsSection { max-height: 40vh; }
 
   /* Messages — WhatsApp-style chat area with subtle wallpaper */
   .messages {
@@ -1405,7 +1393,7 @@
     background:
       radial-gradient(circle at 1px 1px, rgba(26, 26, 26, 0.05) 1px, transparent 0) 0 0 / 20px 20px,
       var(--bg);
-  }
+ }
   .msgWrap { max-width: 88%; }
   /* Consecutive messages from the same side sit closer together */
   .msgGrouped { margin-top: -9px; }
@@ -1415,17 +1403,15 @@
     display: flex;
     justify-content: center;
     margin: 2px 0;
-  }
+ }
   .dateSepChip {
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
     padding: 3px 12px;
     border-radius: 99px;
-    border: 1.5px solid rgba(26, 26, 26, 0.35);
     background: var(--surface);
     color: rgba(26, 26, 26, 0.65);
-    box-shadow: 1px 1px 0 rgba(26, 26, 26, 0.35);
-  }
+ }
 
   /* Timestamp lives inside the bubble; the under-bubble meta row is hidden */
   .bubbleTimeIn {
@@ -1437,87 +1423,71 @@
     color: rgba(26, 26, 26, 0.5);
     line-height: 1;
     white-space: nowrap;
-  }
+ }
   .structuredTimeIn { margin: 0 12px 8px; }
   .bubbleMeta { display: none; }
   .bubble {
     font-size: 15px;
     line-height: 1.5;
-    border: 2px solid var(--nb-ink);
     padding: 11px 14px;
-  }
+ }
   .bubbleIn {
     background: var(--surface);
-    color: var(--nb-ink);
-    box-shadow: var(--nb-shadow-sm);
     border-radius: 16px 16px 16px 5px;
-  }
+ }
   .bubbleOut {
-    background: var(--nb-sky);
-    color: var(--nb-ink);
-    box-shadow: -2px 2px 0 var(--nb-ink);
     border-radius: 16px 16px 5px 16px;
-  }
-  .bubbleNote {
-    background: var(--nb-yellow-soft) !important;
-    color: var(--nb-ink) !important;
-    border: 2px dashed var(--nb-ink);
-  }
-  .structuredCard { border: 2px solid var(--nb-ink); box-shadow: var(--nb-shadow-sm); }
-  .structuredTag { border: 1.5px solid var(--nb-ink); }
+ }
   /* System message (resolved/reopened) — full width, never clipped */
   .systemMsg { gap: 6px; }
   .systemLine { display: none; }
   .systemBubble {
-    border: 2px solid var(--nb-ink);
-    box-shadow: var(--nb-shadow-sm);
     max-width: 100%;
     flex: 1;
     min-width: 0;
-  }
-  .attachmentThumb { width: 44vw; height: 34vw; border: 2px solid var(--nb-ink); }
+ }
+  .attachmentThumb { width: 44vw; height: 34vw; }
   .lightboxClose { top: -44px; width: 44px; height: 44px; font-size: 24px; }
 
   /* Reply area — pinned compose, compact */
   .replyArea {
-    border-top: 3px solid var(--nb-ink);
     padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
     background: var(--surface);
-  }
+ }
 
   /* Collapsible toolbar */
   .composeTools {
     display: none;
     margin-bottom: 8px;
-  }
+ }
   .composeToolsOpen {
     display: block;
     animation: nbSlideDown 0.15s ease;
-  }
+ }
   .composeToolsOpen .toolbar,
   .composeToolsOpen .formatBar {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
-  }
+ }
   .composeToolsOpen .toolbar::-webkit-scrollbar,
   .composeToolsOpen .formatBar::-webkit-scrollbar { display: none; }
-  .composeToolsOpen .toolBtn { flex-shrink: 0; border: 2px solid var(--nb-ink); font-weight: 700; min-height: 40px; }
-  .composeToolsOpen .fmtBtn { flex-shrink: 0; border: 2px solid var(--nb-ink); min-height: 40px; min-width: 40px; }
+  .composeToolsOpen .toolBtn { flex-shrink: 0; font-weight: 600; min-height: 40px; }
+  .composeToolsOpen .fmtBtn { flex-shrink: 0; min-height: 40px; min-width: 40px; }
   .replyingAs { display: none; }
 
   @keyframes nbSlideDown {
     from { opacity: 0; transform: translateY(-6px); }
     to   { opacity: 1; transform: translateY(0); }
-  }
+ }
 
   /* Editor row: [+ toggle] [editor] */
   .textareaWrap {
     display: flex;
     align-items: flex-end;
     gap: 8px;
-  }
+ }
   .composeToggle {
     display: flex;
     align-items: center;
@@ -1525,14 +1495,10 @@
     flex-shrink: 0;
     width: 44px;
     height: 44px;
-    border: 2px solid var(--nb-ink);
     border-radius: 12px;
-    background: var(--nb-mint);
-    color: var(--nb-ink);
-    box-shadow: var(--nb-shadow-sm);
     transition: transform 0.12s ease;
-  }
-  .composeToggleOpen { transform: rotate(45deg); background: var(--nb-coral); }
+ }
+  .composeToggleOpen { transform: rotate(45deg); background: var(--surface-3); }
   .composeToggle:active { transform: translate(1px, 1px); box-shadow: none; }
   .composeToggleOpen:active { transform: rotate(45deg) translate(1px, 1px); }
 
@@ -1540,14 +1506,11 @@
     flex: 1;
     min-height: 44px;
     max-height: 32dvh;
-    border: 2px solid var(--nb-ink);
     border-radius: 22px;
     padding: 11px 16px;
     font-size: 16px;
-  }
-  .textarea:focus { box-shadow: var(--nb-shadow-sm); }
+ }
   .textareaExpanded { max-height: 52dvh; }
-  .textareaNote { background: var(--nb-yellow-soft); border-color: var(--nb-ink); color: var(--nb-ink); }
   .expandBtn { display: none; }
 
   /* Send column: [✨ AI] stacked above [➤ send], WhatsApp style */
@@ -1558,7 +1521,7 @@
     justify-content: flex-end;
     gap: 6px;
     flex-shrink: 0;
-  }
+ }
   .mobileSend {
     display: flex;
     align-items: center;
@@ -1566,16 +1529,17 @@
     flex-shrink: 0;
     width: 44px;
     height: 44px;
-    border: 2px solid var(--nb-ink);
     border-radius: 50%;
-    background: var(--nb-sky);
-    color: var(--nb-ink);
-    box-shadow: var(--nb-shadow-sm);
+    background: var(--accent);
+    color: #fff;
+    box-shadow: var(--shadow-sm);
   }
-  .mobileSend:active:not(:disabled) { transform: translate(1px, 1px); box-shadow: none; }
+  /* Note mode has to be unmistakable on the send control itself — this is the
+     button that would otherwise mail an internal note to the customer. */
+  .mobileSendNote { background: var(--amber); color: #fff; }
+  .mobileSend:active:not(:disabled) { transform: translateY(1px); box-shadow: none; }
   .mobileSend:disabled { opacity: 0.4; }
-  .mobileSendNote { background: var(--nb-yellow); }
-  .mobileSendDots { font-size: 18px; font-weight: 800; line-height: 1; }
+  .mobileSendDots { font-size: 18px; font-weight: 600; line-height: 1; }
 
   .mobileAiBtn {
     display: flex;
@@ -1585,15 +1549,14 @@
     width: 36px;
     height: 36px;
     min-height: 36px;
-    border: 2px solid var(--nb-ink);
     border-radius: 50%;
-    background: var(--nb-lav);
-    color: var(--nb-ink);
     font-size: 15px;
     line-height: 1;
-    box-shadow: var(--nb-shadow-sm);
-  }
-  .mobileAiBtn:active:not(:disabled) { transform: translate(1px, 1px); box-shadow: none; }
+    border: 1px solid var(--border-md);
+    background: var(--surface);
+    color: var(--text-secondary);
+ }
+  .mobileAiBtn:active:not(:disabled) { transform: translateY(1px); }
   .mobileAiBtn:disabled { opacity: 0.5; }
 
   /* Bottom row (grammar / AI chips / hint / desktop send) removed on mobile —
@@ -1608,22 +1571,19 @@
     bottom: 0;
     top: auto;
     max-height: 72dvh;
-    border: 3px solid var(--nb-ink);
     border-bottom: none;
     border-radius: 22px 22px 0 0;
-    box-shadow: 0 -6px 0 var(--nb-ink);
     z-index: 700;
-  }
+ }
   .tplSearchInput { font-size: 16px; }
   .tplItem { padding: 14px; min-height: 52px; }
   .tplClose { font-size: 16px; padding: 6px 10px; }
 
   /* Grammar panel */
   .grammarPanel {
-    border: 2px solid var(--nb-ink);
     max-height: 40dvh;
     overflow-y: auto;
-  }
+ }
   .grammarApply, .grammarIgnore { min-height: 34px; }
 
   /* Resolve modal — bottom sheet */
@@ -1631,23 +1591,243 @@
     position: fixed;
     align-items: flex-end;
     z-index: 700;
-  }
+ }
   .resolveModal {
     width: 100%;
     max-width: 100%;
-    border: 3px solid var(--nb-ink);
     border-bottom: none;
     border-radius: 22px 22px 0 0;
-    box-shadow: 0 -6px 0 var(--nb-ink);
-  }
-  .resolveInput, .resolveTextarea { min-height: 48px; border: 2px solid var(--nb-ink); }
-  .resolveConfirmBtn, .resolveCancelBtn { min-height: 48px; border: 2px solid var(--nb-ink); font-weight: 800; }
-  .resolveConfirmBtn { background: var(--nb-mint); color: var(--nb-ink); }
+ }
+  .resolveInput, .resolveTextarea { min-height: 48px; }
+  .resolveConfirmBtn, .resolveCancelBtn { min-height: 48px; font-weight: 600; }
 
   /* Link dialog */
   .linkDialogInput { font-size: 16px; min-height: 40px; }
   .linkDialogOk, .linkDialogCancel { min-height: 40px; }
 
-  /* Action tool button keeps its warm tint but gains ink border via composeToolsOpen rule */
-  .toolBtnAction { border-color: var(--nb-ink); }
+}
+/* Context-drawer toggle in the thread header */
+.iconToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-md);
+  background: var(--surface);
+  color: var(--text-secondary);
+  transition: all 0.12s;
+}
+.iconToggle:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.iconToggle[aria-pressed='true'] {
+  background: var(--accent-light);
+  border-color: #93c5fd;
+  color: var(--accent-text);
+}
+
+/* ============================================================
+   PHASE 3 — thread header, composer, resolve modal
+   ============================================================ */
+
+.headerNameRow { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.headerSubRow  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+.headerRight   { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+
+/* SLA was visible in the list row but nowhere inside the thread — the one
+   fact that decides what an agent does next. */
+.slaChipBreached,
+.slaChipRisk {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border: 1px solid;
+}
+.slaChipBreached { background: var(--red-light);   color: var(--red-text);   border-color: #fca5a5; }
+.slaChipRisk     { background: var(--amber-light); color: var(--amber-text); border-color: #fcd34d; }
+
+/* Facts strip — ids, issue, age, tags on one scannable line */
+.factsStrip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+}
+
+.fact { font-size: 11.5px; color: var(--text-secondary); }
+
+.factId {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.factMuted { font-size: 11.5px; color: var(--text-tertiary); white-space: nowrap; }
+
+.badgeChevOpen { transform: rotate(180deg); }
+
+/* Controls row — Resolve promoted out of the status dropdown */
+.headerControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 9px;
+}
+
+.resolveBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 13px;
+  margin-left: auto;
+  border-radius: var(--radius-md);
+  background: var(--green);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 500;
+  transition: opacity 0.12s;
+}
+.resolveBtn:hover { opacity: 0.9; }
+
+/* ── Composer: reply vs internal note ─────────────────────────
+   The mode used to be a toggle button whose only strong signal was a 1px
+   amber border. Sending a candid internal note to a customer is the worst
+   mistake available here, so the choice is explicit and the whole surface
+   changes with it. */
+.modeSwitch {
+  display: flex;
+  gap: 2px;
+  padding: 6px 14px 0;
+  flex-shrink: 0;
+}
+
+.modeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  border-bottom: 2px solid transparent;
+  transition: all 0.12s;
+}
+.modeBtn:hover { color: var(--text-secondary); background: var(--surface-2); }
+
+.modeBtnActiveReply {
+  color: var(--accent-text);
+  background: var(--accent-light);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+.modeBtnActiveNote {
+  color: var(--amber-text);
+  background: var(--amber-light);
+  border-bottom-color: var(--amber);
+  font-weight: 600;
+}
+
+.aiWrap { display: inline-flex; margin-left: auto; }
+
+.replyBottomLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.noteHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--amber-text);
+}
+
+.aiWorking { font-size: 11.5px; color: var(--text-tertiary); }
+
+.sendBtn { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ── Resolve modal: resolver identity ─────────────────────────
+   Free-text "your name" is what produced the "N spellings merged" badge in
+   Insights. The signed-in user is the default and typing is the exception. */
+.resolverRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+.resolverAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 99px;
+  background: var(--accent-light);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.resolverName { font-size: 13px; font-weight: 500; color: var(--text-primary); flex: 1; }
+
+.resolverSwap {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--accent-text);
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+}
+.resolverSwap:hover { background: var(--accent-light); }
+
+.reqMark {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+@media (max-width: 768px) {
+  /* Controls wrap onto their own line rather than squeezing */
+  .headerControls { padding-top: 8px; }
+  .resolveBtn { margin-left: 0; }
+  .modeSwitch { padding: 6px 10px 0; }
+}
+
+/* Shown for the moment the editor chunk is fetching */
+.editorLoading {
+  flex: 1;
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--border-md);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  font-size: 13px;
+  color: var(--text-tertiary);
 }
