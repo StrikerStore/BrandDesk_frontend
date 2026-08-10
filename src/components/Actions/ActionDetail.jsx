@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { getBrandColor, displayOrderId } from '../../utils/helpers.js';
 import { TYPE_LABELS, TYPE_COLORS, schemaFor, progressOf } from '../../utils/actionTypes.js';
 import Icon from '../../ui/Icon.jsx';
+import MaskedValue from '../../ui/MaskedValue.jsx';
 import styles from './ActionDetail.module.css';
 
 const formatDateTime = (v) => v
@@ -42,7 +43,13 @@ export default function ActionDetail({ action, onClose, onSaveField, onCloseActi
         </div>
 
         <button className={styles.ticketLink} onClick={onOpenTicket}>
-          <span className={styles.ticketName}>{action.customer_name || action.customer_email || 'Customer'}</span>
+          <span className={styles.ticketName}>
+            {action.customer_name
+              ? action.customer_name
+              : (action.customer_email
+                  ? <MaskedValue value={action.customer_email} type="email" />
+                  : 'Customer')}
+          </span>
           <span className={styles.ticketMeta}>
             {action.ticket_id && <span className={styles.mono}>{action.ticket_id}</span>}
             {action.order_number && <span className={styles.mono}>#{displayOrderId(action.order_number)}</span>}

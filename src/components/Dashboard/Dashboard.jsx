@@ -7,6 +7,7 @@ import {
 } from '../../utils/api.js';
 import { TYPE_LABELS } from '../../utils/actionTypes.js';
 import { useToast } from '../../ui/ToastProvider.jsx';
+import MaskedValue from '../../ui/MaskedValue.jsx';
 import styles from './Dashboard.module.css';
 
 const RANGE_OPTIONS = [
@@ -268,7 +269,13 @@ export default function Dashboard({ user, brands = [], onDrillDown, onOpenThread
                       >
                         <div className={styles.slaRowLeft}>
                           <span className={styles.slaTicketId}>{t.ticket_id || `#${t.id}`}</span>
-                          <span className={styles.slaCustomer}>{t.customer_name || t.customer_email}</span>
+                          {/* Names are fine to show; the email fallback is a
+                            contact detail, so it masks for agents. */}
+                        <span className={styles.slaCustomer}>
+                          {t.customer_name
+                            ? t.customer_name
+                            : <MaskedValue value={t.customer_email} type="email" />}
+                        </span>
                           <span className={styles.slaBrand}>{t.brand}</span>
                         </div>
                         <div className={styles.slaRowRight}>

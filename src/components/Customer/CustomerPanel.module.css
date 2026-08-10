@@ -36,6 +36,9 @@
   border-radius: var(--radius-md);
   padding: 12px;
   border-left: 3px solid var(--accent);
+  /* The card ran straight into the next section's divider, so the two read as
+     one block. */
+  margin-bottom: 6px;
 }
 
 .ticketIdRow {

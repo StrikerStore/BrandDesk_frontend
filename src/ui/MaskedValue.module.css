@@ -1,0 +1,13 @@
+.wrap {
+  display: inline-block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.value { letter-spacing: 0.02em; }
+
+.mono { font-family: var(--font-mono); font-size: 0.94em; letter-spacing: 0; }

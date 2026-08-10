@@ -5,6 +5,7 @@ import { useToast } from '../../ui/ToastProvider.jsx';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import Icon from '../../ui/Icon.jsx';
 import Menu from '../../ui/Menu.jsx';
+import MaskedValue from '../../ui/MaskedValue.jsx';
 import { formatFullTime, formatClock, formatDayLabel, resolveTemplate, STATUS_CONFIG, getBrandColor, getInitials, statusSince, displayOrderId } from '../../utils/helpers.js';
 // ProseMirror is the app's heaviest dependency and is only needed once a
 // thread is open, so it loads on demand rather than in the first paint.
@@ -55,23 +56,24 @@ function snoozeUntil(preset) {
   }
 }
 
-function SlaChip({ status, label }) {
+function SlaChip({ status, label, banner = false }) {
   if (!status || status === 'on_track') return null;
   const breached = status === 'breached';
+  const tone = breached ? styles.slaChipBreached : styles.slaChipRisk;
   return (
-    <span
-      className={breached ? styles.slaChipBreached : styles.slaChipRisk}
-      title={label || (breached ? 'SLA breached' : 'SLA at risk')}
-    >
-      <Icon name={breached ? 'alert' : 'clock'} size={11} />
-      {label || (breached ? 'SLA breached' : 'At risk')}
-    </span>
+    <div className={banner ? styles.slaBanner : undefined}>
+      <span className={tone} title={label || (breached ? 'SLA breached' : 'SLA at risk')}>
+        <Icon name={breached ? 'alert' : 'clock'} size={11} />
+        {label || (breached ? 'SLA breached' : 'At risk')}
+      </span>
+      {banner && <span className={styles.slaBannerNote}>Visible to admins only</span>}
+    </div>
   );
 }
 
 export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, onOpenCustomer, onThreadDeleted, contextOpen, onToggleContext }) {
   const toast = useToast();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const {
     thread, messages, pending, loading, sending, reply, patchStatus, setThread, reload,
     undoSend, retrySend, discardSend,
@@ -553,10 +555,9 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
           <div className={styles.headerCustomer}>
             <div className={styles.headerNameRow}>
               <span className={styles.headerName}>{displayName}</span>
-              <SlaChip status={thread.sla_status} label={thread.sla_label} />
             </div>
             <div className={styles.headerSubRow}>
-              <span className={styles.headerEmail}>{thread.customer_email}</span>
+              <MaskedValue className={styles.headerEmail} value={thread.customer_email} type="email" />
               <span className={styles.brandBadge} style={{ background: brandColor.bg, color: brandColor.text }}>
                 {thread.brand}
               </span>
@@ -608,12 +609,8 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
           {thread.order_number && (
             <span className={styles.factId}>#{displayOrderId(thread.order_id_resolved || thread.order_number)}</span>
           )}
-          {thread.issue_category && (
-            <span className={styles.fact}>
-              {thread.issue_category}
-              {thread.sub_issue && thread.sub_issue !== thread.issue_category ? ` / ${thread.sub_issue}` : ''}
-            </span>
-          )}
+          {/* Issue and sub-issue live in the ticket's own facts card in the
+              context panel; repeating them here made the strip wrap. */}
           <span className={styles.factMuted} title={formatFullTime(thread.created_at)}>
             Created {formatFullTime(thread.created_at)}
           </span>
@@ -726,6 +723,11 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
       )}
 
       {/* Messages */}
+      {/* SLA is a management metric, so it sits with the conversation and only
+          admins see it — agents shouldn't be reading a countdown while they
+          write to a customer. */}
+      {isAdmin && <SlaChip status={thread.sla_status} label={thread.sla_label} banner />}
+
       <div className={styles.messagesWrap}>
       <div className={styles.messages} ref={messagesBoxRef} onScroll={measureScroll}>
         {messages.map((msg, i) => {
@@ -885,6 +887,11 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
               style={{ display: 'none' }}
               onChange={handleAttachFiles}
             />
+
+            {/* Holds the right-hand group in place. The gap used to come from
+                `margin-left: auto` on the AI control, which only renders in
+                reply mode — so Log action jumped left in note mode. */}
+            <span className={styles.toolSpacer} aria-hidden="true" />
 
             {/* One AI control. There were two competing grammar systems: a
                 server rewrite and a direct browser call to LanguageTool's
@@ -1293,10 +1300,21 @@ function StructuredMessage({ message, thread, grouped }) {
           {metaLines.map((line, i) => {
             const [icon, ...rest] = line.split(' ');
             const content = rest.join(' ');
+            // The parsed form card printed the customer's phone in clear.
+            // Split "Phone: 9220525933" so only the value is masked.
+            const contact = content.match(/^(Phone|Email|Mobile|Contact)\s*:\s*(.+)$/i);
             return (
               <span key={i} className={styles.structuredTag}>
                 <span className={styles.structuredIcon}>{icon}</span>
-                {content}
+                {contact ? (
+                  <>
+                    {contact[1]}:{' '}
+                    <MaskedValue
+                      value={contact[2].trim()}
+                      type={/email/i.test(contact[1]) ? 'email' : 'phone'}
+                    />
+                  </>
+                ) : content}
               </span>
             );
           })}

@@ -1711,7 +1711,10 @@
 .modeSwitch {
   display: flex;
   gap: 2px;
-  padding: 6px 14px 0;
+  /* Sits on the reply area's own 14px inset — the extra top/left padding it
+     used to carry pushed the tabs down and indented them past the toolbar
+     below, so the two rows didn't share a left edge. */
+  padding: 0 0 8px;
   flex-shrink: 0;
 }
 
@@ -1742,7 +1745,11 @@
   font-weight: 600;
 }
 
-.aiWrap { display: inline-flex; margin-left: auto; }
+/* The spacer owns the gap, so Improve and Log action keep the same position
+   whether or not the AI control is rendered. */
+.toolSpacer { flex: 1 1 auto; min-width: 8px; }
+
+.aiWrap { display: inline-flex; }
 
 .replyBottomLeft {
   display: flex;
@@ -1815,7 +1822,7 @@
   /* Controls wrap onto their own line rather than squeezing */
   .headerControls { padding-top: 8px; }
   .resolveBtn { margin-left: 0; }
-  .modeSwitch { padding: 6px 10px 0; }
+  .modeSwitch { padding: 0 0 6px; }
 }
 
 /* Shown for the moment the editor chunk is fetching */
@@ -1831,3 +1838,15 @@
   font-size: 13px;
   color: var(--text-tertiary);
 }
+
+/* Admin-only SLA strip above the conversation */
+.slaBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 20px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.slaBannerNote { font-size: 10.5px; color: var(--text-tertiary); }

@@ -5,6 +5,8 @@ import { ACTION_TYPES, TYPE_LABELS, TYPE_COLORS, schemaFor, progressOf } from '.
 import { useToast } from '../../ui/ToastProvider.jsx';
 import ConfirmDialog from '../../ui/ConfirmDialog.jsx';
 import Icon from '../../ui/Icon.jsx';
+import { maskFor } from '../../ui/MaskedValue.jsx';
+import { useAuth } from '../../auth/AuthContext.jsx';
 import ActionDetail from './ActionDetail.jsx';
 import styles from './ActionsView.module.css';
 
@@ -262,6 +264,7 @@ export default function ActionsView({ onSelectThread }) {
 }
 
 function ActionRow({ action, selected, active, onToggleSel, onOpen }) {
+  const { isAdmin } = useAuth();
   const isClosed   = !!action.is_closed;
   const typeColor  = TYPE_COLORS[action.action_type] || {};
   const brandColor = getBrandColor(action.brand || '');
@@ -270,7 +273,10 @@ function ActionRow({ action, selected, active, onToggleSel, onOpen }) {
 
   const rawName     = action.customer_name || '';
   const isStore     = rawName.toLowerCase().includes('shopify') || rawName.toLowerCase().includes(' store');
-  const displayName = (!rawName || isStore) ? (action.customer_email || 'Customer') : rawName;
+  // Email fallback is a contact detail, so agents see it masked.
+  const displayName = (!rawName || isStore)
+    ? (maskFor(isAdmin, action.customer_email, 'email') || 'Customer')
+    : rawName;
 
   return (
     <tr className={`${styles.row} ${isClosed ? styles.rowClosed : ''} ${active ? styles.rowActive : ''}`}>

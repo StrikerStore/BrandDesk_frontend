@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { fetchViews, createView, deleteView, fetchStats, errorMessage } from '../../utils/api';
 import { formatTime, getBrandColor, STATUS_CONFIG, truncate, getInitials, displayOrderId } from '../../utils/helpers.js';
 import { useToast } from '../../ui/ToastProvider.jsx';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import { maskFor } from '../../ui/MaskedValue.jsx';
 import styles from './Sidebar.module.css';
 
 // Kept only for the mobile case, where opening a ticket swaps the list out of
@@ -422,13 +424,22 @@ export default function Sidebar({
 }
 
 function ThreadRow({ thread, selected, onSelect }) {
+  const { isAdmin } = useAuth();
   const brandColor  = getBrandColor(thread.brand);
   const status      = STATUS_CONFIG[thread.status] || STATUS_CONFIG.open;
   const rawName     = thread.customer_name || '';
   const isStoreName = rawName.toLowerCase().includes('shopify') || rawName.toLowerCase().includes(' store');
-  const displayName = (!rawName || isStoreName) ? (thread.customer_email || 'Unknown') : rawName;
-  const initials    = getInitials(displayName);
-  const slaStatus   = thread.sla_status; // 'on_track' | 'at_risk' | 'breached' | null
+  // Falling back to the raw email would put a contact detail in front of every
+  // agent, so the fallback is masked for them.
+  const hasName     = !!rawName && !isStoreName;
+  const displayName = hasName
+    ? rawName
+    : (maskFor(isAdmin, thread.customer_email, 'email') || 'Unknown');
+  const initials    = getInitials(hasName ? rawName : (thread.customer_email || ''));
+  // SLA is a management signal — agents see the queue, admins see the clock.
+  // Nulling it here removes the row tint, the dot, the at-risk badge and the
+  // breached pill in one place.
+  const slaStatus   = isAdmin ? thread.sla_status : null;
   const tags = (() => {
     const raw = thread.tags;
     if (!raw) return [];

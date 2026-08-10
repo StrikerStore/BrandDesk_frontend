@@ -3,6 +3,8 @@ import { fetchCustomer, updateCustomerNotes, createCustomer, fetchThread, errorM
 import { getInitials, getBrandColor, displayOrderId, truncate } from '../../utils/helpers.js';
 import { useToast } from '../../ui/ToastProvider.jsx';
 import AccordionSection from '../../ui/Accordion.jsx';
+import MaskedValue, { maskFor } from '../../ui/MaskedValue.jsx';
+import { useAuth } from '../../auth/AuthContext.jsx';
 import OrderPanel from '../Order/OrderPanel.jsx';
 import styles from './CustomerPanel.module.css';
 
@@ -19,15 +21,9 @@ function readOpenState() {
   }
 }
 
-function maskPhone(phone) {
-  if (!phone) return null;
-  const p = phone.replace(/\D/g, '');
-  if (p.length < 4) return phone;
-  return '•'.repeat(Math.max(0, p.length - 4)) + p.slice(-4);
-}
-
 export default function CustomerPanel({ threadId }) {
   const toast = useToast();
+  const { isAdmin } = useAuth();
   const [thread, setThread] = useState(null);
   const [customer, setCustomer] = useState(null);
   const [pastTickets, setPastTickets] = useState([]);
@@ -162,7 +158,7 @@ export default function CustomerPanel({ threadId }) {
                 onSaved={(name) => setCustomer(p => ({ ...p, name }))}
               />
             )}
-            <div className={styles.customerEmail}>{customer?.email}</div>
+            <MaskedValue className={styles.customerEmail} value={customer?.email} type="email" />
           </div>
         </div>
 
@@ -171,15 +167,17 @@ export default function CustomerPanel({ threadId }) {
           title="Contact"
           open={isOpen('contact')}
           onToggle={() => toggle('contact')}
-          summary={maskPhone(customer?.phone || thread?.customer_phone) || 'No phone on file'}
+          summary={maskFor(isAdmin, customer?.phone || thread?.customer_phone, 'phone') || 'No phone on file'}
         >
           <div className={styles.detailRows}>
             {(customer?.phone || thread?.customer_phone) && (
               <div className={styles.detailRow}>
                 <span className={styles.detailLabel}>Phone</span>
-                <span className={styles.detailVal}>
-                  {maskPhone(customer?.phone || thread?.customer_phone)}
-                </span>
+                <MaskedValue
+                  className={styles.detailVal}
+                  value={customer?.phone || thread?.customer_phone}
+                  type="phone"
+                />
               </div>
             )}
             {customer?.location && (

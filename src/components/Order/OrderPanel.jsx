@@ -3,12 +3,12 @@ import { fetchOrder, fetchOrdersByEmail, updateThread } from '../../utils/api.js
 import { displayOrderId } from '../../utils/helpers.js';
 import styles from './OrderPanel.module.css';
 
-// Mask phone: keep only last 4 digits → ••••••4321
-function maskPhone(phone) {
-  if (!phone) return null;
-  const p = phone.replace(/\D/g, '');
-  if (p.length < 4) return phone;
-  return '•'.repeat(Math.max(0, p.length - 4)) + p.slice(-4);
+// Shipway's public tracking page is keyed on the AWB alone.
+const SHIPWAY_TRACK_BASE = 'https://plexzuu.shipway.com/t/';
+function shipwayUrl(awb) {
+  const clean = String(awb ?? '').trim();
+  // Guard against a stray value producing a broken or injected link.
+  return /^[A-Za-z0-9_-]{4,}$/.test(clean) ? SHIPWAY_TRACK_BASE + encodeURIComponent(clean) : null;
 }
 
 function formatDate(d) {
@@ -282,6 +282,27 @@ function OrderLines({ orders, baseId, compact }) {
                   {o.tracking.awb}
                 </span>
               </div>
+              {/* Shipway builds its tracking page straight off the AWB, so the
+                  link needs no extra field from the OMS. Shown as a control
+                  rather than a raw URL — the full link is unreadable inline. */}
+              {shipwayUrl(o.tracking.awb) && (
+                <div className={styles.trackingRow}>
+                  <span className={styles.trackingLabel}>Track</span>
+                  <a
+                    className={styles.trackLink}
+                    href={shipwayUrl(o.tracking.awb)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    title={`Track ${o.tracking.awb} on Shipway`}
+                  >
+                    Track shipment
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M7 17 17 7M9 7h8v8" />
+                    </svg>
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
