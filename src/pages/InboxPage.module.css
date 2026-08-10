@@ -1,6 +1,6 @@
 .root {
   display: grid;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   background: var(--bg);
 }
@@ -8,7 +8,7 @@
 .col {
   position: relative;
   overflow: hidden;
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -16,7 +16,7 @@
 .analyticsOverlay {
   grid-column: 2 / -1;
   overflow: hidden;
-  height: 100vh;
+  height: 100%;
   border-left: 1px solid var(--border);
 }
 
@@ -78,7 +78,7 @@
 @media (max-width: 768px) {
   .mobileRoot {
     position: relative;
-    height: 100dvh;
+    height: 100%;
     width: 100%;
     overflow: hidden;
     background: var(--bg);

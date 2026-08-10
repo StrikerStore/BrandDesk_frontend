@@ -374,7 +374,7 @@
     width: 100%;
     max-width: 100%;
     max-height: none;
-    height: 100dvh;
+    height: 100%;
     border-radius: 0;
     box-shadow: none;
  }

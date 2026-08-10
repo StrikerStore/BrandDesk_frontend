@@ -1,7 +1,7 @@
 .root {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
   background: var(--surface);
   border-right: 1px solid var(--border);
   overflow: hidden;
@@ -771,7 +771,7 @@
   .hideMobile { display: none !important; }
 
   .root {
-    height: 100dvh;
+    height: 100%;
     border-right: none;
     background: var(--bg);
  }
