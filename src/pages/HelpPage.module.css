@@ -1,0 +1,234 @@
+/* Page shell mirrors Settings so Help doesn't read as a different product.
+   Slightly wider, because this is prose and Settings is form rows. */
+.page {
+  height: 100%;
+  overflow-y: auto;
+  background: var(--bg);
+  padding: 24px;
+}
+
+.shell { max-width: 780px; margin: 0 auto; }
+
+.pageHead { margin-bottom: 16px; }
+
+.pageTitle {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.lede {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-width: 62ch;
+}
+.lede strong { color: var(--text-primary); font-weight: 600; }
+
+.headActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.linkBtn {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-text);
+  padding: 2px 0;
+  border-radius: var(--radius-sm);
+  background: none;
+}
+.linkBtn:hover { text-decoration: underline; }
+
+.dot { color: var(--text-tertiary); font-size: 12px; }
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* Accordion titles carry an icon; the icon must not shift the text baseline.
+   AccordionSection styles its title as an 11px uppercase micro-label, which is
+   right for the narrow context drawer and far too quiet for the eight primary
+   topics on this page. Rendering inside that span lets these properties win
+   without reaching into the shared module. */
+.secTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  text-transform: none;
+  color: var(--text-primary);
+}
+.secIcon { color: var(--text-tertiary); flex-shrink: 0; }
+
+/* ── Prose ──────────────────────────────────────────────────────────────── */
+
+/* The Accordion panel is sized for the narrow context drawer, so give the
+   reading column its own comfortable measure and rhythm here. */
+.prose {
+  padding: 4px 4px 14px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  max-width: 68ch;
+}
+
+.prose p { margin-bottom: 10px; }
+.prose p:last-child { margin-bottom: 0; }
+.prose strong { color: var(--text-primary); font-weight: 600; }
+.prose em { font-style: italic; }
+
+.h4 {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.2px;
+  margin: 16px 0 6px;
+}
+
+.code {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11.5px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1px 5px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* Definition lists carry most of the content — term left, meaning right on a
+   wide screen, stacked once that would squeeze the meaning into a column. */
+.defs {
+  display: grid;
+  grid-template-columns: minmax(120px, 168px) 1fr;
+  gap: 6px 16px;
+  margin: 10px 0 12px;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border-radius: var(--radius-md);
+}
+
+.defs dt {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.defs dd { font-size: 12.5px; line-height: 1.55; }
+
+.tip {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin: 12px 0 10px;
+  padding: 10px 12px;
+  background: var(--surface-2);
+  border-left: 2px solid var(--accent);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.tipIcon {
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+/* ── Shortcut tables ────────────────────────────────────────────────────── */
+
+.scGroup { margin-bottom: 18px; }
+.scGroup:last-child { margin-bottom: 0; }
+
+.scGroupNote {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  margin-bottom: 8px !important;
+}
+
+.scTable {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.scRow {
+  display: grid;
+  grid-template-columns: minmax(110px, 150px) 1fr;
+  gap: 14px;
+  align-items: baseline;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.scRow:last-child { border-bottom: none; }
+.scRow:nth-child(even) { background: var(--surface-2); }
+
+.scKeys {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.scKeyWrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.scOr { font-size: 11px; color: var(--text-tertiary); }
+
+.kbd {
+  display: inline-block;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 2px 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.scWhat { display: flex; flex-direction: column; gap: 2px; }
+
+.scLabel { font-size: 12.5px; color: var(--text-primary); }
+
+.scNote { font-size: 11.5px; color: var(--text-tertiary); line-height: 1.45; }
+
+/* ── Narrow screens ─────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .page { padding: 14px 12px 24px; }
+  .shell { max-width: none; }
+  .pageTitle { font-size: 18px; }
+
+  /* Two columns stop being two columns long before they overlap — a 120px
+     term against a 3-word column is worse than stacking. */
+  .defs {
+    grid-template-columns: 1fr;
+    gap: 2px;
+    padding: 12px;
+  }
+  .defs dd { margin-bottom: 10px; }
+  .defs dd:last-child { margin-bottom: 0; }
+
+  .scRow {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .prose { max-width: none; }
+}

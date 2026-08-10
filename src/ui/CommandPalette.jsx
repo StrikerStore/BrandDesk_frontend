@@ -13,16 +13,19 @@ import styles from './CommandPalette.module.css';
  * This is jump-to-anything: destinations, filtered inbox views, and live
  * ticket search by customer, ticket id or order number.
  */
+// `keywords` exists because the filter used to match on `label` alone: nobody
+// types "Go to Insights", they type "sla" or "report". It is not shown.
 const NAV_COMMANDS = [
-  { id: 'inbox',    label: 'Go to Inbox',          icon: 'package',  to: '/inbox' },
-  { id: 'actions',  label: 'Go to Actions',        icon: 'check',    to: '/actions' },
-  { id: 'insights', label: 'Go to Insights',       icon: 'clock',    to: '/insights' },
-  { id: 'tpl',      label: 'Go to Templates',      icon: 'note',     to: '/templates' },
-  { id: 'settings', label: 'Go to Settings',       icon: 'user',     to: '/settings/account' },
-  { id: 'open',     label: 'Open tickets',         icon: 'package',  to: '/inbox?status=open' },
-  { id: 'prog',     label: 'In-progress tickets',  icon: 'package',  to: '/inbox?status=in_progress' },
-  { id: 'mine',     label: 'Assigned to me',       icon: 'user',     to: '/inbox?assignee=me' },
-  { id: 'unassig',  label: 'Unassigned tickets',   icon: 'userPlus', to: '/inbox?assignee=unassigned' },
+  { id: 'inbox',    label: 'Go to Inbox',          icon: 'package',  to: '/inbox',                        keywords: 'tickets threads mail' },
+  { id: 'actions',  label: 'Go to Actions',        icon: 'check',    to: '/actions',                      keywords: 'tasks refunds checklist' },
+  { id: 'insights', label: 'Go to Insights',       icon: 'clock',    to: '/insights',                     keywords: 'analytics reports stats sla dashboard' },
+  { id: 'tpl',      label: 'Go to Templates',      icon: 'note',     to: '/templates',                    keywords: 'canned saved replies snippets' },
+  { id: 'settings', label: 'Go to Settings',       icon: 'user',     to: '/settings/account',             keywords: 'preferences account team automation' },
+  { id: 'help',     label: 'Help & shortcuts',     icon: 'note',     to: '/help',                         keywords: 'guide keyboard shortcuts keys docs how to onboarding' },
+  { id: 'open',     label: 'Open tickets',         icon: 'package',  to: '/inbox?status=open',            keywords: 'new unresolved' },
+  { id: 'prog',     label: 'In-progress tickets',  icon: 'package',  to: '/inbox?status=in_progress',     keywords: 'working wip' },
+  { id: 'mine',     label: 'Assigned to me',       icon: 'user',     to: '/inbox?assignee=me',            keywords: 'my mine owner' },
+  { id: 'unassig',  label: 'Unassigned tickets',   icon: 'userPlus', to: '/inbox?assignee=unassigned',    keywords: 'nobody unclaimed queue' },
 ];
 
 export default function CommandPalette({ onClose }) {
@@ -37,7 +40,9 @@ export default function CommandPalette({ onClose }) {
   const commands = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return NAV_COMMANDS;
-    return NAV_COMMANDS.filter(c => c.label.toLowerCase().includes(q));
+    return NAV_COMMANDS.filter(c =>
+      c.label.toLowerCase().includes(q) || c.keywords?.includes(q)
+    );
   }, [query]);
 
   // Ticket lookup is debounced; two characters is enough for an order number.

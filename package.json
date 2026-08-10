@@ -7,7 +7,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "vite preview --host 0.0.0.0 --port $PORT",
-    "test": "node src/utils/sanitize.test.mjs && node src/utils/actionEvents.test.mjs"
+    "test": "node src/utils/sanitize.test.mjs && node src/utils/actionEvents.test.mjs && node src/utils/threadSort.test.mjs && node src/utils/shortcuts.test.mjs"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.8.0",

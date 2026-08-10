@@ -10,6 +10,7 @@ import ActionsPage from './pages/ActionsPage.jsx';
 import InsightsPage from './pages/InsightsPage.jsx';
 import TemplatesPage from './pages/TemplatesPage.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
+import HelpPage from './pages/HelpPage.jsx';
 import NotFoundPage from './pages/NotFoundPage.jsx';
 
 export default function App() {
@@ -94,6 +95,7 @@ export default function App() {
           <Route path="/templates" element={<TemplatesPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/settings/:tab" element={<SettingsPage />} />
+          <Route path="/help" element={<HelpPage />} />
           <Route path="/" element={<Navigate to="/inbox" replace />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

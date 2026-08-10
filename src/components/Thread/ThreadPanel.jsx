@@ -13,6 +13,9 @@ import { formatFullTime, formatClock, formatDayLabel, resolveTemplate, STATUS_CO
 // thread is open, so it loads on demand rather than in the first paint.
 const RichEditor = lazy(() => import('../../ui/RichEditor.jsx'));
 import { sanitizeEmailHtml, escapeHtml } from '../../utils/sanitize.js';
+// Hints used to hard-code ⌘, which is wrong on the Windows machines this team
+// actually uses. formatShortcut renders for the reader's keyboard.
+import { formatShortcut } from '../../utils/shortcuts.js';
 import ActionModal from './ActionModal.jsx';
 import ActionPanel from './ActionPanel.jsx';
 import styles from './ThreadPanel.module.css';
@@ -699,7 +702,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
                 onClick={onToggleContext}
                 aria-pressed={contextOpen}
                 aria-label={contextOpen ? 'Hide customer panel' : 'Show customer panel'}
-                title={`${contextOpen ? 'Hide' : 'Show'} customer panel (⌘\\)`}
+                title={`${contextOpen ? 'Hide' : 'Show'} customer panel (${formatShortcut('Mod+\\')})`}
               >
                 <Icon name="panel" size={15} />
               </button>
@@ -994,11 +997,11 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
 
             <span className={styles.fmtSep} />
 
-            <button className={styles.fmtBtn} title="Bold (⌘B)" aria-label="Bold"
+            <button className={styles.fmtBtn} title={`Bold (${formatShortcut('Mod+B')})`} aria-label="Bold"
               onMouseDown={e => { e.preventDefault(); handleFormatBold(); }}><strong>B</strong></button>
-            <button className={styles.fmtBtn} title="Italic (⌘I)" aria-label="Italic"
+            <button className={styles.fmtBtn} title={`Italic (${formatShortcut('Mod+I')})`} aria-label="Italic"
               onMouseDown={e => { e.preventDefault(); handleFormatItalic(); }}><em>I</em></button>
-            <button className={styles.fmtBtn} title="Underline (⌘U)" aria-label="Underline"
+            <button className={styles.fmtBtn} title={`Underline (${formatShortcut('Mod+U')})`} aria-label="Underline"
               onMouseDown={e => { e.preventDefault(); handleFormatUnderline(); }}><u>U</u></button>
             <button className={styles.fmtBtn} title="Insert link" aria-label="Insert link"
               onMouseDown={e => { e.preventDefault(); handleFormatLink(); }}><Icon name="link" size={13} /></button>
@@ -1109,7 +1112,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
               ? (isNote ? 'Internal note…' : 'Type your reply…')
               : (isNote
                   ? 'Add an internal note — not sent to the customer…'
-                  : 'Type your reply… (press / for templates, ⌘↵ to send)')}
+                  : `Type your reply… (press / for templates, ${formatShortcut('Mod+Enter')} to send)`)}
             onChange={setReplyText}
             onSubmit={handleSend}
             onSlash={() => setShowTemplates(true)}
@@ -1206,7 +1209,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
               </span>
             ) : (
               <span className={styles.hint}>
-                Replying as <strong>{thread.brand_email}</strong> · ⌘↵ to send
+                Replying as <strong>{thread.brand_email}</strong> · {formatShortcut('Mod+Enter')} to send
               </span>
             )}
             {aiLoading && <span className={styles.aiWorking}>Rewriting…</span>}

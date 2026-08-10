@@ -127,7 +127,13 @@ export default function NavRail({ badges = {}, onFullSync, syncing }) {
                 Connect Gmail
               </a>
             )}
-            {isAdmin && <div className={styles.menuDivider} />}
+            {/* Everyone gets this, so the divider above Sign out is no longer
+                conditional — there is always something between them. */}
+            <NavLink className={styles.menuItem} role="menuitem" to="/help"
+              onClick={() => setMenuOpen(false)}>
+              Help &amp; shortcuts
+            </NavLink>
+            <div className={styles.menuDivider} />
             <button className={styles.menuItemDanger} role="menuitem" onClick={handleLogout}>
               Sign out
             </button>

@@ -1,23 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchThreads, syncThreads as apiSync, fullSyncThreads as apiFullSync, errorMessage } from '../utils/api';
 import { pushToast } from '../ui/ToastProvider.jsx';
+import { sortThreads } from '../utils/threadSort.js';
 
 const PAGE_SIZE = 50;
-
-/**
- * The list is built from several server responses — page 1 refreshed by the
- * 60s poll, pages 2..N appended by infinite scroll — and each was only sorted
- * within itself. Stitching them preserved arrival order, not recency, so rows
- * drifted out of order the longer a session ran.
- *
- * Sorting on the same key the server uses makes the rendered order correct no
- * matter how the pieces arrive.
- */
-const recencyOf = (t) => new Date(t.last_message_at || t.created_at).getTime() || 0;
-
-const byRecency = (a, b) => recencyOf(b) - recencyOf(a) || (b.id - a.id);
-
-const sorted = (list) => [...list].sort(byRecency);
 
 export function useThreads(filters = {}) {
   const [threads, setThreads]       = useState([]);
@@ -58,7 +44,7 @@ export function useThreads(filters = {}) {
           // Rows beyond page 1 keep their existing order; anything that moved up
           // into page 1 is already in `list`, so no duplicates.
           const tail = prev.filter(t => !firstPageIds.has(t.id));
-          const next = sorted([...list, ...tail]);
+          const next = sortThreads([...list, ...tail]);
           // Keep the same array reference when nothing changed so a quiet poll
           // doesn't re-render every row (mirrors useThread.js)
           const unchanged = prev.length === next.length && next.every((t, i) => {
@@ -70,7 +56,7 @@ export function useThreads(filters = {}) {
           return unchanged ? prev : next;
         });
       } else {
-        setThreads(sorted(list));
+        setThreads(sortThreads(list));
         pageRef.current = 1;
         threadCountRef.current = list.length;
       }
@@ -113,7 +99,7 @@ export function useThreads(filters = {}) {
         setThreads(prev => {
           const existingIds = new Set(prev.map(t => t.id));
           const unique = newThreads.filter(t => !existingIds.has(t.id));
-          const combined = sorted([...prev, ...unique]);
+          const combined = sortThreads([...prev, ...unique]);
           threadCountRef.current = combined.length;
           return combined;
         });
@@ -174,14 +160,12 @@ export function useThreads(filters = {}) {
     }
   }, [load]);
 
-  // Optimistic update.
-  //
-  // This used to re-sort the list by priority whenever priority changed, to
-  // match the server's old urgent-first grouping. That grouping is gone, so
-  // re-sorting here would jump a row to the top the moment someone marked it
-  // urgent — the ticket you were reading would move out from under you.
+  // Optimistic update. Re-sorted through the shared comparator so marking a
+  // ticket urgent lifts it to the top straight away instead of waiting for the
+  // next poll. Sorting an already-ordered list is a no-op, so the other
+  // updates (is_unread, status, tags) leave positions untouched.
   const updateThreadLocal = useCallback((id, updates) => {
-    setThreads(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    setThreads(prev => sortThreads(prev.map(t => t.id === id ? { ...t, ...updates } : t)));
   }, []);
 
   const removeThreadLocal = useCallback((id) => {

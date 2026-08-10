@@ -1,9 +1,38 @@
-import { forwardRef, useImperativeHandle, useEffect } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { forwardRef, useImperativeHandle, useEffect, useRef } from 'react';
+import { useEditor, EditorContent, Extension } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Placeholder } from '@tiptap/extensions';
 import { sanitizeComposerHtml } from '../utils/sanitize.js';
 import styles from './RichEditor.module.css';
+
+/**
+ * Send and templates, bound inside ProseMirror's own keymap.
+ *
+ * These used to live on a wrapping `onKeyDown`, which fires *after* the
+ * editor has already handled the key. StarterKit's HardBreak claims
+ * `Mod-Enter` for "insert a line break", so Ctrl/Cmd+Enter inserted a <br>
+ * and *then* sent — every keyboard-sent reply carried a stray trailing break.
+ * Registering here with a higher priority means our handler wins and returns
+ * true, so HardBreak never runs.
+ *
+ * The handlers are read from a ref so rebinding never recreates the editor.
+ */
+const ComposerKeys = Extension.create({
+  name: 'composerKeys',
+  priority: 1000,
+  addOptions: () => ({ handlers: { current: {} } }),
+  addKeyboardShortcuts() {
+    const get = () => this.options.handlers.current || {};
+    return {
+      'Mod-Enter': () => { get().onSubmit?.(); return true; },
+      '/': () => {
+        if (!this.editor.isEmpty) return false;   // only on an empty composer
+        get().onSlash?.();
+        return true;
+      },
+    };
+  },
+});
 
 /**
  * Composer editor.
@@ -24,8 +53,14 @@ const RichEditor = forwardRef(function RichEditor(
   { placeholder, isNote, expanded, onChange, onSubmit, onSlash },
   ref
 ) {
+  // Kept current every render so the keymap always calls today's handlers
+  // without the editor being torn down and rebuilt.
+  const handlers = useRef({ onSubmit, onSlash });
+  handlers.current = { onSubmit, onSlash };
+
   const editor = useEditor({
     extensions: [
+      ComposerKeys.configure({ handlers }),
       StarterKit.configure({
         // Email replies don't need block structure beyond lists and quotes.
         heading: false,
@@ -79,18 +114,10 @@ const RichEditor = forwardRef(function RichEditor(
     isActive: (name) => !!editor?.isActive(name),
   }), [editor]);
 
-  // ⌘↵ sends; `/` on an empty document opens templates. Both were previously
-  // wired onto the contentEditable's keydown.
-  const onKeyDown = (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); onSubmit?.(); return; }
-    if (e.key === '/' && editor?.isEmpty) { e.preventDefault(); onSlash?.(); }
-  };
-
+  // Send and `/` are handled by the ComposerKeys extension above, inside
+  // ProseMirror's keymap, so they take priority over the editor's own bindings.
   return (
-    <div
-      className={`${styles.wrap} ${isNote ? styles.wrapNote : ''} ${expanded ? styles.wrapExpanded : ''}`}
-      onKeyDown={onKeyDown}
-    >
+    <div className={`${styles.wrap} ${isNote ? styles.wrapNote : ''} ${expanded ? styles.wrapExpanded : ''}`}>
       <EditorContent editor={editor} className={styles.editor} />
     </div>
   );
