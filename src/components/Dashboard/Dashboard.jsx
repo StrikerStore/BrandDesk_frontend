@@ -178,13 +178,16 @@ export default function Dashboard({ user, brands = [], onDrillDown, onOpenThread
           ))}
         </div>
 
-        <div className={styles.filterGroup}>
-          <label className={styles.filterLabel}>From</label>
-          <input type="date" className={styles.dateInput} value={custom.from}
+        {/* Own class so the mobile rules can give the two date inputs a full
+            row — sharing a 140px flex basis with the labels collapsed them to
+            about 40px each, which is narrower than a date can render in. */}
+        <div className={`${styles.filterGroup} ${styles.dateGroup}`}>
+          <label className={styles.filterLabel} htmlFor="range-from">From</label>
+          <input id="range-from" type="date" className={styles.dateInput} value={custom.from}
             max={custom.to || undefined}
             onChange={e => setCustomFrom(e.target.value)} />
-          <label className={styles.filterLabel}>To</label>
-          <input type="date" className={styles.dateInput} value={custom.to}
+          <label className={styles.filterLabel} htmlFor="range-to">To</label>
+          <input id="range-to" type="date" className={styles.dateInput} value={custom.to}
             min={custom.from || undefined}
             onChange={e => setCustomTo(e.target.value)} />
           {usingCustom && (

@@ -941,3 +941,9 @@
  }
   .userMenuItem, .userMenuItemDanger { padding: 12px; font-size: 15px; min-height: 44px; }
 }
+/* Same touch-floor collision as the settings toggle: a 16px round button
+   stretched to 44px turned the filter chip into a tall lozenge. */
+.chipRemove { min-height: 0; }
+@media (pointer: coarse) {
+  .chipRemove { width: 22px; height: 22px; }
+}

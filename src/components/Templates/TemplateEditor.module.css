@@ -262,3 +262,77 @@
   color: white;
 }
 .deleteConfirmBtn:hover { opacity: 0.88; }
+/* Back-to-list control — desktop keeps both panes visible, so it's hidden
+   there and only earns its place on a phone. */
+.backToList { display: none; }
+
+/* ============================================================
+   MOBILE — master-detail
+   This module had no mobile block at all, so the desktop
+   `240px 1fr` grid applied on phones: a squeezed template list
+   pinned beside a permanently empty editor pane.
+   ============================================================ */
+@media (max-width: 768px) {
+  .overlay { padding: 0; }
+
+  .modal {
+    height: 100%;
+    max-width: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .modalHeader { padding: calc(12px + env(safe-area-inset-top)) 16px 12px; }
+
+  /* One pane at a time */
+  .modalBody { display: block; grid-template-columns: none; overflow: hidden; }
+
+  .listPane,
+  .editorPane { height: 100%; border-right: none; }
+
+  .modalBody[data-editing='false'] .editorPane { display: none; }
+  .modalBody[data-editing='true']  .listPane   { display: none; }
+
+  .modalBody[data-editing='true'] .editorPane { display: flex; flex-direction: column; }
+
+  .listPane { padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); overflow-y: auto; }
+
+  /* Rows become real tap targets rather than 30px lines */
+  .tplRow { padding: 13px 12px; border-radius: var(--radius-md); }
+  .tplRowTitle { font-size: 14px; }
+  /* Delete is hover-revealed on desktop, which never happens on touch */
+  .deleteBtn { opacity: 1; padding: 8px; }
+
+  .newBtn { min-height: 46px; font-size: 14px; text-align: center; }
+
+  .catLabel { padding-top: 6px; }
+
+  .backToList {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+    margin: 10px 16px 0;
+    padding: 8px 12px 8px 8px;
+    align-self: flex-start;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .editorFields { padding: 14px 16px; gap: 14px; }
+  .fieldTextarea { min-height: 200px; }
+
+  .editorActions {
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    gap: 10px;
+  }
+  .cancelEditBtn, .saveBtn { flex: 1; min-height: 46px; }
+
+  /* Variable chips wrap into a scrollable row instead of a tall block */
+  .varRow { gap: 6px; }
+  .varChip { min-height: 34px; display: inline-flex; align-items: center; }
+}

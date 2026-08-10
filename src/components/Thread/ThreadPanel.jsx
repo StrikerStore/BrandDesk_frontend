@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, Fragment, lazy, Suspense } from 'react';
 import { useThread } from '../../hooks/useThread.js';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { fetchTemplates, trackTemplateUse, updateThread, resolveThread, improveText, fetchThreadActions, fetchUsers, errorMessage } from '../../utils/api.js';
 import { useToast } from '../../ui/ToastProvider.jsx';
 import { useAuth } from '../../auth/AuthContext.jsx';
@@ -75,6 +76,7 @@ function SlaChip({ status, label, banner = false }) {
 export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, onOpenCustomer, onThreadDeleted, contextOpen, onToggleContext }) {
   const toast = useToast();
   const { user, isAdmin } = useAuth();
+  const isMobile = useIsMobile();
   const {
     thread, messages, pending, loading, sending, reply, patchStatus, setThread, reload,
     undoSend, retrySend, discardSend,
@@ -1006,9 +1008,13 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
             ref={editorRef}
             isNote={isNote}
             expanded={isExpanded}
-            placeholder={isNote
-              ? 'Add an internal note — not sent to the customer…'
-              : 'Type your reply… (press / for templates, ⌘↵ to send)'}
+            // The desktop hint names two keyboard shortcuts that don't exist
+            // on a phone, and it was long enough to be clipped mid-word.
+            placeholder={isMobile
+              ? (isNote ? 'Internal note…' : 'Type your reply…')
+              : (isNote
+                  ? 'Add an internal note — not sent to the customer…'
+                  : 'Type your reply… (press / for templates, ⌘↵ to send)')}
             onChange={setReplyText}
             onSubmit={handleSend}
             onSlash={() => setShowTemplates(true)}

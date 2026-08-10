@@ -65,7 +65,11 @@ export default function TemplateEditor() {
           <h2 className={styles.modalTitle}>Templates</h2>
         </div>
 
-        <div className={styles.modalBody}>
+        {/* On a phone there isn't room for a list beside an editor, so the two
+            panes become master-detail: the list fills the screen until a
+            template is picked, then the editor takes over. `data-editing`
+            drives that entirely in CSS. */}
+        <div className={styles.modalBody} data-editing={editing ? 'true' : 'false'}>
           {/* Left — template list */}
           <div className={styles.listPane}>
             <button className={styles.newBtn} onClick={startNew}>+ New template</button>
@@ -93,6 +97,15 @@ export default function TemplateEditor() {
           <div className={styles.editorPane}>
             {editing ? (
               <>
+                {/* Mobile-only: the list is off-screen while editing, so this
+                    is the way back to it. */}
+                <button className={styles.backToList} onClick={() => setEditing(null)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M15 18l-6-6 6-6" />
+                  </svg>
+                  All templates
+                </button>
                 <div className={styles.editorFields}>
                   <div className={styles.fieldRow}>
                     <label className={styles.fieldLabel}>Title</label>

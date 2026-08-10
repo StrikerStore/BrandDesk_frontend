@@ -1282,20 +1282,37 @@
     background: var(--surface);
  }
   .headerTop {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     align-items: center;
     gap: 8px;
-    margin-bottom: 6px;
+    margin-bottom: 0;
  }
-  /* Row 1 = back · avatar · name/subtitle · icons; controls strip wraps to its own row when expanded */
-  .headerCustomer { flex-basis: 0; }
-  .headerControls { flex-basis: 100%; justify-content: flex-start; }
 
-  /* Collapsed (default): only the WhatsApp row shows */
+  /* Row 1 is a single tidy line: back · avatar · name+status · icons.
+     It must not wrap, or the status chip orphans onto its own line. */
+  .headerCustomer { flex-basis: 0; min-width: 0; }
+  .headerNameRow { gap: 6px; min-width: 0; }
+  .headerSubRow  { gap: 6px; flex-wrap: nowrap; min-width: 0; }
+  .headerSubRow .brandBadge {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 40%;
+  }
+  .statusSince { flex-shrink: 0; }
+
+  /* Collapsed (default): everything below row 1 is hidden behind the chevron.
+     These used to name .headerMeta and .tagsRow, which the header rewrite
+     replaced with .factsStrip — so the ids, created date and tags were all
+     leaking into the collapsed header. */
   .headerCollapsed .headerControls,
-  .headerCollapsed .headerMeta,
-  .headerCollapsed .tagsRow { display: none !important; }
-  .headerCollapsed .headerTop { margin-bottom: 0; }
+  .headerCollapsed .factsStrip { display: none !important; }
+
+  /* Expanded: the strips get their own rows with room to breathe */
+  .factsStrip { padding-top: 10px; gap: 6px 8px; }
+  .headerControls { padding-top: 10px; gap: 8px; row-gap: 8px; }
+  .headerControls > * { flex: 0 1 auto; }
+  .resolveBtn { flex: 1 0 auto; justify-content: center; min-height: 40px; }
 
   .backBtn {
     flex-shrink: 0;
@@ -1385,14 +1402,14 @@
 
   .actionsSection { max-height: 40vh; }
 
-  /* Messages — WhatsApp-style chat area with subtle wallpaper */
+  /* Messages. The dotted "wallpaper" that used to sit here belonged to the
+     old mobile theme — it survived the token strip because it hard-coded its
+     colour, and it reads as noise against the desktop's plain surface. */
   .messages {
     padding: 16px 14px;
     gap: 14px;
     overscroll-behavior: contain;
-    background:
-      radial-gradient(circle at 1px 1px, rgba(26, 26, 26, 0.05) 1px, transparent 0) 0 0 / 20px 20px,
-      var(--bg);
+    background: var(--bg);
  }
   .msgWrap { max-width: 88%; }
   /* Consecutive messages from the same side sit closer together */
@@ -1900,4 +1917,10 @@
 @media (max-width: 768px) {
   .eventBubble { max-width: 88%; }
   .eventTime { margin-left: 0; padding-left: 0; width: 100%; }
+}
+
+/* Jump buttons are explicitly round; the 44px touch floor made them ovals. */
+.scrollTopBtn, .scrollBottomBtn { min-height: 0; }
+@media (pointer: coarse) {
+  .scrollTopBtn, .scrollBottomBtn { width: 40px; height: 40px; }
 }

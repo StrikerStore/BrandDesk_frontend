@@ -177,6 +177,11 @@
 .toggle {
   width: 40px;
   height: 22px;
+  /* The global touch floor (`button { min-height: 44px }`) beats `height`,
+     which stretched this pill into a 40×44 blob on phones. The touch target
+     is restored by growing the whole switch under pointer:coarse below,
+     rather than by inflating it out of shape. */
+  min-height: 0;
   border-radius: 99px;
   background: var(--surface-3);
   border: 1px solid var(--border-md);
