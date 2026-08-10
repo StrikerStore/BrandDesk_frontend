@@ -2072,3 +2072,122 @@
   .modeBtnActiveReply,
   .modeBtnActiveNote { border-bottom: none; }
 }
+
+/* Compact ids in the header subtitle — desktop shows them in the facts strip. */
+.headerFacts { display: none; }
+
+@media (max-width: 768px) {
+  /* Header identity is a tap target that opens contact info. */
+  .headerCustomer {
+    text-align: left;
+    background: none;
+    padding: 2px 0;
+    border-radius: var(--radius-sm);
+    min-height: 0;
+  }
+  .headerCustomer:active { background: var(--surface-2); }
+
+  .headerFacts {
+    display: inline;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* The inline toolbar is replaced by the tray below. */
+  .composeTools, .composeToolsOpen { display: none !important; }
+
+  /* ── Tools tray ────────────────────────────────────────── */
+  .toolSheetOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: flex-end;
+    animation: toolFade 0.12s ease;
+  }
+  @keyframes toolFade { from { opacity: 0; } to { opacity: 1; } }
+
+  .toolSheet {
+    width: 100%;
+    padding: 0 14px calc(18px + env(safe-area-inset-bottom));
+    background: var(--surface);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    box-shadow: var(--shadow-md);
+    animation: toolUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes toolUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+  .toolSheetGrab {
+    width: 40px;
+    height: 4px;
+    border-radius: 99px;
+    background: var(--surface-3);
+    margin: 10px auto 14px;
+  }
+
+  .fmtRow {
+    display: flex;
+    gap: 6px;
+    padding-bottom: 14px;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .fmtTile {
+    flex: 1;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    background: var(--surface-2);
+    color: var(--text-primary);
+    font-size: 15px;
+  }
+  .fmtTile:active { background: var(--surface-3); }
+
+  /* WhatsApp's attachment grid: icon tile above a label. */
+  .toolGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+    gap: 14px 8px;
+  }
+  .toolTile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    background: none;
+    min-height: 0;
+    padding: 0;
+  }
+  .toolTile:disabled { opacity: 0.45; }
+
+  .toolTileIcon {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .toolTile:active .toolTileIcon { transform: scale(0.94); }
+
+  .tone_blue   { background: var(--accent-light); color: var(--accent-text); }
+  .tone_amber  { background: var(--amber-light);  color: var(--amber-text); }
+  .tone_green  { background: var(--green-light);  color: var(--green-text); }
+  .tone_purple { background: var(--purple-light); color: var(--purple-text); }
+  .tone_grey   { background: var(--surface-2);    color: var(--text-secondary); }
+
+  .toolTileLabel {
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.25;
+  }
+}

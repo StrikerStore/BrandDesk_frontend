@@ -58,6 +58,79 @@ function snoozeUntil(preset) {
   }
 }
 
+/** Header identity: a button that opens contact info on mobile, plain text on desktop. */
+function IdentityBlock({ as: Tag, onOpen, children }) {
+  return (
+    <Tag
+      className={styles.headerCustomer}
+      {...(Tag === 'button'
+        ? { type: 'button', onClick: onOpen, 'aria-label': 'Customer and ticket details' }
+        : {})}
+    >
+      {children}
+    </Tag>
+  );
+}
+
+/**
+ * Mobile tools tray — WhatsApp's attachment sheet, holding the things that
+ * live in the composer toolbar on desktop.
+ *
+ * The toolbar itself was a horizontally-scrolling strip on phones, so "Log
+ * action" and "Improve" sat off-screen behind the `+` with nothing indicating
+ * they were there.
+ */
+function ToolSheet({ isNote, aiBusy, onClose, onTemplates, onAction, onImprove, onAttach, fmt }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const run = (fn) => () => { fn(); onClose(); };
+
+  return (
+    <div className={styles.toolSheetOverlay} onMouseDown={e => e.target === e.currentTarget && onClose()}>
+      <div className={styles.toolSheet} role="dialog" aria-modal="true" aria-label="Composer tools">
+        <div className={styles.toolSheetGrab} />
+
+        <div className={styles.fmtRow}>
+          <button className={styles.fmtTile} onClick={fmt.bold}      aria-label="Bold"><strong>B</strong></button>
+          <button className={styles.fmtTile} onClick={fmt.italic}    aria-label="Italic"><em>I</em></button>
+          <button className={styles.fmtTile} onClick={fmt.underline} aria-label="Underline"><u>U</u></button>
+          <button className={styles.fmtTile} onClick={fmt.link}      aria-label="Insert link"><Icon name="link" size={15} /></button>
+          <button className={styles.fmtTile} onClick={fmt.bullet}    aria-label="Bullet list"><Icon name="note" size={15} /></button>
+        </div>
+
+        <div className={styles.toolGrid}>
+          <ToolTile icon="note"     label="Templates"  tone="blue"   onClick={run(onTemplates)} />
+          <ToolTile icon="plus"     label="Log action" tone="amber"  onClick={run(onAction)} />
+          <ToolTile icon="paperclip" label="Attach"    tone="grey"   onClick={run(onAttach)} />
+          {!isNote && (
+            <>
+              <ToolTile icon="checkCircle" label="Fix grammar" tone="green"
+                disabled={aiBusy} onClick={run(() => onImprove('grammar'))} />
+              <ToolTile icon="sparkles" label="Make professional" tone="purple"
+                disabled={aiBusy} onClick={run(() => onImprove('professional'))} />
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ToolTile({ icon, label, tone, onClick, disabled }) {
+  return (
+    <button className={styles.toolTile} onClick={onClick} disabled={disabled} type="button">
+      <span className={`${styles.toolTileIcon} ${styles[`tone_${tone}`]}`}>
+        <Icon name={icon} size={20} />
+      </span>
+      <span className={styles.toolTileLabel}>{label}</span>
+    </button>
+  );
+}
+
 function SlaChip({ status, label, banner = false }) {
   if (!status || status === 'on_track') return null;
   const breached = status === 'breached';
@@ -574,7 +647,10 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
           <div className={styles.headerAvatar} style={{ background: brandColor.bg, color: brandColor.text }}>
             {getInitials(displayName) || '?'}
           </div>
-          <div className={styles.headerCustomer}>
+          {/* On mobile the whole identity block opens the customer sheet, the
+              way tapping a WhatsApp header opens contact info. Desktop keeps
+              it as static text — the panel is already on screen there. */}
+          <IdentityBlock as={onOpenCustomer ? 'button' : 'div'} onOpen={onOpenCustomer}>
             <div className={styles.headerNameRow}>
               <span className={styles.headerName}>{displayName}</span>
             </div>
@@ -583,13 +659,20 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
               <span className={styles.brandBadge} style={{ background: brandColor.bg, color: brandColor.text }}>
                 {thread.brand}
               </span>
+              {/* The ids are the "customer info" an agent scans for, and the
+                  facts strip they used to live in is collapsed by default on
+                  mobile — so a compact copy rides in the subtitle. */}
+              <span className={styles.headerFacts}>
+                {thread.ticket_id}
+                {thread.order_number ? ` · #${displayOrderId(thread.order_id_resolved || thread.order_number)}` : ''}
+              </span>
               {sinceLabel && (
                 <span className={styles.statusSince} style={{ color: statusCfg.color, background: statusCfg.bg }}>
                   {sinceLabel}
                 </span>
               )}
             </div>
-          </div>
+          </IdentityBlock>
 
           <div className={styles.headerRight}>
             {onOpenCustomer && (
@@ -922,14 +1005,6 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
 
             <button className={styles.fmtBtn} title="Attach file" aria-label="Attach file"
               onClick={() => attachInputRef.current?.click()}><Icon name="paperclip" size={13} /></button>
-            <input
-              ref={attachInputRef}
-              type="file"
-              multiple
-              accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
-              style={{ display: 'none' }}
-              onChange={handleAttachFiles}
-            />
 
             {/* Holds the right-hand group in place. The gap used to come from
                 `margin-left: auto` on the AI control, which only renders in
@@ -992,6 +1067,21 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
           </div>
         )}
 
+        {/* Lives outside the toolbar because that toolbar is display:none on
+            mobile, and a programmatic .click() on an input with a hidden
+            ancestor is unreliable on iOS Safari. Kept off-screen rather than
+            display:none for the same reason. */}
+        <input
+          ref={attachInputRef}
+          type="file"
+          multiple
+          accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
+          onChange={handleAttachFiles}
+        />
+
         <div className={styles.textareaWrap}>
           {/* On mobile this becomes one rounded pill holding the tools trigger,
               the editor and the expand control — WhatsApp's single input
@@ -1036,6 +1126,26 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
             }
           </button>
           </div>{/* /inputPill */}
+
+          {/* Phones get the tray instead of the inline toolbar. */}
+          {isMobile && showComposeTools && (
+            <ToolSheet
+              isNote={isNote}
+              aiBusy={!!aiLoading}
+              onClose={() => setShowComposeTools(false)}
+              onTemplates={() => setShowTemplates(true)}
+              onAction={() => setShowActionModal(true)}
+              onImprove={handleAiImprove}
+              onAttach={() => attachInputRef.current?.click()}
+              fmt={{
+                bold: handleFormatBold,
+                italic: handleFormatItalic,
+                underline: handleFormatUnderline,
+                link: handleFormatLink,
+                bullet: handleFormatBullet,
+              }}
+            />
+          )}
           {/* Mobile send column: quick rewrite above send. Emoji swapped for
               the shared icon set so they inherit colour, size and weight. */}
           <div className={styles.mobileSendCol}>
