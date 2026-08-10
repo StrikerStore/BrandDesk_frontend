@@ -1924,3 +1924,151 @@
 @media (pointer: coarse) {
   .scrollTopBtn, .scrollBottomBtn { width: 40px; height: 40px; }
 }
+
+/* ============================================================
+   MOBILE — WhatsApp chat structure
+   Same tokens and colours as the rest of the app; only the
+   arrangement borrows from a messaging client. Layered as its own
+   media block so it overrides the earlier mobile rules without
+   surgery on them.
+   ============================================================ */
+
+/* Desktop keeps the composer children as direct flex items. */
+.inputPill { display: contents; }
+
+@media (max-width: 768px) {
+
+  /* ── App bar ───────────────────────────────────────────────
+     One compact row that never wraps: back · avatar · name over
+     status · actions. */
+  .header { padding: calc(6px + env(safe-area-inset-top)) 8px 6px; border-bottom: 1px solid var(--border); }
+  .headerTop { gap: 6px; }
+  .backBtn { width: 34px; height: 34px; background: none; }
+  .headerAvatar { width: 36px; height: 36px; }
+  .headerName { font-size: 15.5px; line-height: 1.2; }
+  .headerSubRow { gap: 5px; }
+  .statusSince { font-size: 11px; padding: 0; background: none !important; }
+  .headerRight { gap: 2px; }
+
+  /* ── Message stream ────────────────────────────────────────
+     Tighter rhythm than a document; bubbles carry the structure. */
+  .messages { padding: 10px 8px 14px; gap: 2px; }
+  .msgWrap { max-width: 82%; }
+
+  /* Tail sits on the FIRST bubble of a run, at the top outer corner,
+     and disappears for the rest — the thing that makes a stack read
+     as one person talking. */
+  .bubbleIn  { border-radius: 4px 16px 16px 16px; }
+  .bubbleOut { border-radius: 16px 4px 16px 16px; }
+  .msgGrouped { margin-top: 0; }
+  .msgGrouped .bubbleIn,
+  .msgGrouped .bubbleOut { border-radius: 16px; }
+
+  /* Separate speakers get air; same speaker stays tight. */
+  .msgWrap { margin-top: 8px; }
+  .msgGrouped { margin-top: 2px; }
+
+  .bubble { padding: 7px 10px 8px; box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.07); }
+  .bubbleIn { background: var(--surface); }
+
+  /* The signature trick: the time floats into the last line of text
+     instead of claiming a row of its own. The inline-block spacer
+     reserves room so a long final word can't slide under it. */
+  .bubbleText::after {
+    content: '';
+    display: inline-block;
+    width: 52px;
+    height: 1px;
+  }
+  .bubbleTimeIn {
+    float: right;
+    margin: -14px 0 0 6px;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .bubbleOut .bubbleTimeIn { color: rgba(255, 255, 255, 0.75); }
+
+  /* ── Parsed ticket card reads as an inbound bubble ─────────
+     It was a full-width slab, which broke the chat rhythm. */
+  .structuredCard {
+    max-width: 100%;
+    border-radius: 4px 16px 16px 16px;
+    box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.07);
+  }
+  .structuredMeta { padding: 8px 10px; gap: 4px; }
+  .structuredTag { font-size: 11px; padding: 2px 7px; }
+  .structuredBody { padding: 9px 10px 8px; }
+  .structuredTimeIn { margin: 0 10px 7px; }
+
+  /* ── Centre-pinned status pills, like WhatsApp's day markers ── */
+  .dateSep { margin: 10px 0 6px; }
+  .dateSepChip { box-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.07); }
+  .systemMsg { justify-content: center; margin: 8px 0; }
+  .systemBubble {
+    max-width: 85%;
+    flex: 0 1 auto;
+    text-align: center;
+    border-radius: 8px;
+  }
+  .eventBubble { max-width: 88%; margin: 0 auto; }
+
+  /* ── Composer: one capsule + a round send ──────────────────
+     Was [+][input][○]; the tools trigger now lives inside the
+     capsule the way WhatsApp nests emoji and attachment. */
+  .replyArea { padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); border-top: none; }
+
+  .textareaWrap { align-items: flex-end; gap: 6px; }
+
+  .inputPill {
+    display: flex;
+    align-items: flex-end;
+    flex: 1;
+    min-width: 0;
+    gap: 2px;
+    padding: 3px 4px;
+    border-radius: 22px;
+    background: var(--surface);
+    border: 1px solid var(--border-md);
+  }
+  .inputPill:focus-within { border-color: var(--accent); }
+
+  /* Note mode tints the capsule itself — the whole writing surface
+     changes, which is the point of the reply/note distinction. */
+  .inputPillNote {
+    background: var(--amber-light);
+    border-color: #fcd34d;
+  }
+  .inputPillNote:focus-within { border-color: var(--amber); }
+
+  .composeToggle {
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--text-secondary);
+  }
+
+  /* No expand control: it stays hidden on mobile (it's absolutely positioned
+     and would float over the send button), and the capsule grows with the
+     text anyway — same as WhatsApp. */
+
+  /* ── Mode switch: compact chips, not full-width tabs ───────
+     WhatsApp has no equivalent, but sending an internal note to a
+     customer is the worst mistake here, so it stays visible — just
+     smaller and out of the way. */
+  .modeSwitch { padding: 0 2px 6px; gap: 4px; }
+  .modeBtn {
+    padding: 4px 10px;
+    border-radius: 99px;
+    border-bottom: none;
+    font-size: 12px;
+    min-height: 30px;
+  }
+  .modeBtnActiveReply,
+  .modeBtnActiveNote { border-bottom: none; }
+}

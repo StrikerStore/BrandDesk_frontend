@@ -64,11 +64,22 @@
 }
 
 @media (max-width: 768px) {
-  .content {
-    min-height: 44px;
-    max-height: 32dvh;
-    font-size: 16px;              /* stops iOS zooming on focus */
-    padding: 11px 14px;
+  /* The composer sits inside ThreadPanel's rounded capsule on mobile, so the
+     editor drops its own chrome — otherwise it's a border inside a border,
+     and the note tint would be painted twice. */
+  .wrap {
+    border: none;
+    background: transparent;
+    border-radius: 0;
   }
-  .wrap { border-radius: var(--radius-xl); }
+  .wrapNote { background: transparent; border: none; }
+  .wrap:focus-within, .wrapNote:focus-within { border: none; }
+
+  .content {
+    min-height: 30px;
+    max-height: 30dvh;
+    font-size: 16px;              /* stops iOS zooming on focus */
+    padding: 7px 4px;
+  }
+  .wrapExpanded .content { min-height: 140px; max-height: 45dvh; }
 }

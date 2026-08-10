@@ -993,6 +993,11 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
         )}
 
         <div className={styles.textareaWrap}>
+          {/* On mobile this becomes one rounded pill holding the tools trigger,
+              the editor and the expand control — WhatsApp's single input
+              capsule. `display: contents` on desktop, so that layout is
+              completely unaffected. */}
+          <div className={`${styles.inputPill} ${isNote ? styles.inputPillNote : ''}`}>
           <button
             className={`${styles.composeToggle} ${showComposeTools ? styles.composeToggleOpen : ''}`}
             onClick={() => setShowComposeTools(v => !v)}
@@ -1030,6 +1035,7 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
               : <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M4 10l6 6 6-6"/></svg>
             }
           </button>
+          </div>{/* /inputPill */}
           {/* Mobile send column: quick rewrite above send. Emoji swapped for
               the shared icon set so they inherit colour, size and weight. */}
           <div className={styles.mobileSendCol}>
