@@ -3,6 +3,7 @@ import {
   fetchThread, updateThread, sendReply as apiSendReply,
   cancelPendingSend, retryPendingSend, discardPendingSend,
 } from '../utils/api';
+import { coalesceEvents } from '../utils/actionEvents.js';
 
 const POLL_INTERVAL = 30000; // 30 seconds
 
@@ -10,6 +11,7 @@ export function useThread(threadId) {
   const [thread, setThread] = useState(null);
   const [messages, setMessages] = useState([]);
   const [pending, setPending] = useState([]);
+  const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
@@ -35,6 +37,12 @@ export function useThread(threadId) {
         // must re-render even though its id never changes.
         const unchanged = prev.length === next.length &&
           next.every((p, i) => p.id === prev[i]?.id && p.status === prev[i]?.status);
+        return unchanged ? prev : next;
+      });
+      setEvents(prev => {
+        const next = data.events || [];
+        // Events are append-only, so ids alone settle identity.
+        const unchanged = prev.length === next.length && next.every((e, i) => e.id === prev[i]?.id);
         return unchanged ? prev : next;
       });
       setError(null);
@@ -78,7 +86,6 @@ export function useThread(threadId) {
   // Pending sends render as message bubbles so the thread reads naturally.
   // The server owns this list, which is why an Undo survives a refresh.
   const visibleMessages = useMemo(() => {
-    if (!pending.length) return messages;
     const bubbles = pending.map(p => ({
       id: `pending-${p.id}`,
       direction: 'outbound',
@@ -89,8 +96,25 @@ export function useThread(threadId) {
       attachments: [],
       _pending: p,
     }));
-    return [...messages, ...bubbles];
-  }, [messages, pending]);
+
+    // Action progress interleaves with the conversation rather than sitting in
+    // a separate log — the whole point is seeing what happened between the
+    // customer's email and the reply.
+    const entries = coalesceEvents(events).map(entry => ({
+      id: entry.id,
+      sent_at: entry.created_at,
+      _event: entry,
+    }));
+
+    if (!bubbles.length && !entries.length) return messages;
+
+    // Messages arrive ordered; pending always belongs at the end. Only the
+    // action entries need placing, so sort the combined list by time with the
+    // original order as the tie-break.
+    const merged = [...messages, ...entries];
+    merged.sort((a, b) => new Date(a.sent_at) - new Date(b.sent_at));
+    return [...merged, ...bubbles];
+  }, [messages, pending, events]);
 
   // Rolls its own optimistic update back and hands the failure to the caller.
   // Logging to console meant the select kept showing a status the server never
@@ -202,7 +226,7 @@ export function useThread(threadId) {
   }, []);
 
   return {
-    thread, messages: visibleMessages, pending, loading, sending, error,
+    thread, messages: visibleMessages, pending, events, loading, sending, error,
     reload: load, patchStatus, reply, setThread,
     undoSend, retrySend, discardSend,
   };

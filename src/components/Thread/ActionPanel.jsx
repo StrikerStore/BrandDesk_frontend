@@ -19,7 +19,7 @@ const firstOpenIdx = (list) => {
   return i === -1 ? 0 : i;
 };
 
-export default function ActionPanel({ threadId, onCountChange, onActionsChange }) {
+export default function ActionPanel({ threadId, onCountChange, onActionsChange, onThreadProgress }) {
   const toast = useToast();
   const [actions, setActions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +52,10 @@ export default function ActionPanel({ threadId, onCountChange, onActionsChange }
   const handleFieldUpdate = async (actionId, field, value) => {
     setActions(prev => prev.map(a => a.id === actionId ? { ...a, [field]: value } : a));
     try {
-      await updateThreadAction(threadId, actionId, { [field]: value });
+      const { data } = await updateThreadAction(threadId, actionId, { [field]: value });
+      // Progress moves the ticket to in progress server-side; reflect that in
+      // the header and the sidebar row without waiting for the next poll.
+      onThreadProgress?.(data);
     } catch (err) {
       load(); // revert on failure
       toast.error("Couldn't save that change", { detail: errorMessage(err) });
@@ -62,6 +65,7 @@ export default function ActionPanel({ threadId, onCountChange, onActionsChange }
   const handleCloseConfirmed = async (action) => {
     try {
       const { data } = await closeThreadAction(threadId, action.id);
+      onThreadProgress?.(data);
       setActions(prev => {
         const next = prev.map(a => a.id === action.id ? data.action : a);
         onActionsChange?.(next);

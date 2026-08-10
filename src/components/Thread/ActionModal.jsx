@@ -96,7 +96,9 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
         new_jersey: form.new_jersey || undefined,
         new_address: form.new_address || undefined,
       });
-      onActionCreated(data.action);
+      // Second argument carries the thread's resulting status — logging an
+      // action is itself progress, so the ticket moves to In progress.
+      onActionCreated(data.action, data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to log action');
     } finally {

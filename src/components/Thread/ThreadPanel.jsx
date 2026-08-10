@@ -5,6 +5,7 @@ import { useToast } from '../../ui/ToastProvider.jsx';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import Icon from '../../ui/Icon.jsx';
 import Menu from '../../ui/Menu.jsx';
+import { TYPE_COLORS, actionLabel } from '../../utils/actionTypes.js';
 import MaskedValue from '../../ui/MaskedValue.jsx';
 import { formatFullTime, formatClock, formatDayLabel, resolveTemplate, STATUS_CONFIG, getBrandColor, getInitials, statusSince, displayOrderId } from '../../utils/helpers.js';
 // ProseMirror is the app's heaviest dependency and is only needed once a
@@ -107,6 +108,25 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
   const applyActionList = (list) => {
     setActionSummary({ total: list.length, open: list.filter(a => !a.is_closed).length });
   };
+
+  /**
+   * Any action write moves the ticket to In progress server-side, and reopens
+   * it if it had been resolved. The endpoints return the resulting status so
+   * the header chip, the sidebar row and the timeline can catch up without a
+   * full reload.
+   */
+  const applyThreadProgress = useCallback((data) => {
+    if (!data?.thread_status) return;
+    if (data.thread_status !== thread?.status) {
+      applyUpdate({ status: data.thread_status, status_changed_at: new Date().toISOString() });
+    }
+    if (data.reopened) {
+      toast.info('Ticket reopened', { detail: 'Action progress was recorded on a resolved ticket.' });
+    }
+    // Pull the new timeline entries in. Silent, so the panel doesn't flash a
+    // loading state over a thread that's already on screen.
+    reload(true);
+  }, [thread?.status, reload, toast]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadActionSummary = useCallback(async () => {
     if (!threadId) return;
@@ -702,7 +722,11 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
       {/* Actions logged on this thread — expanded from header badge */}
       {showActions && (
         <div className={styles.actionsSection}>
-          <ActionPanel threadId={thread.id} onActionsChange={applyActionList} />
+          <ActionPanel
+            threadId={thread.id}
+            onActionsChange={applyActionList}
+            onThreadProgress={applyThreadProgress}
+          />
         </div>
       )}
 
@@ -736,7 +760,24 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
           const grouped = !newDay && prev
             && prev.direction === msg.direction
             && !!prev.is_note === !!msg.is_note
+            && !prev._event && !msg._event
             && prev.from_email !== 'system' && msg.from_email !== 'system';
+
+          // Action progress shares the stream with messages, so it needs the
+          // same day separator treatment.
+          if (msg._event) {
+            return (
+              <Fragment key={msg.id}>
+                {newDay && (
+                  <div className={styles.dateSep}>
+                    <span className={styles.dateSepChip}>{formatDayLabel(msg.sent_at)}</span>
+                  </div>
+                )}
+                <ActionEventEntry entry={msg._event} />
+              </Fragment>
+            );
+          }
+
           return (
             <Fragment key={msg.id || i}>
               {newDay && (
@@ -1065,10 +1106,11 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
         <ActionModal
           threadId={thread.id}
           onClose={() => setShowActionModal(false)}
-          onActionCreated={() => {
+          onActionCreated={(_action, meta) => {
             setShowActionModal(false);
             loadActionSummary();
             setShowActions(true);
+            applyThreadProgress(meta);
           }}
         />
       )}
@@ -1148,6 +1190,39 @@ function formatCountdown(scheduledFor, now) {
   const ms = new Date(scheduledFor).getTime() - now;
   const secs = Math.max(Math.ceil(ms / 1000), 0);
   return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+}
+
+/**
+ * One coalesced run of action progress, placed in the timeline where it
+ * happened. Reuses the system-message rails so it reads as part of the
+ * conversation rather than a separate log.
+ */
+function ActionEventEntry({ entry }) {
+  const color = TYPE_COLORS[entry.action_type] || {};
+  const isReopen = entry.standalone;
+
+  return (
+    <div className={styles.systemMsg}>
+      <div className={styles.systemLine} />
+      <div
+        className={`${styles.eventBubble} ${isReopen ? styles.eventBubbleReopen : ''}`}
+        style={!isReopen && color.bg ? { background: color.bg, borderColor: color.border } : undefined}
+      >
+        <div className={styles.eventHead}>
+          <Icon name={isReopen ? 'history' : 'checkCircle'} size={12} />
+          <span className={styles.eventTitle} style={!isReopen && color.color ? { color: color.color } : undefined}>
+            {isReopen ? 'Reopened' : actionLabel(entry.action_type)}
+          </span>
+          {entry.user_name && <span className={styles.eventWho}>· {entry.user_name}</span>}
+          <span className={styles.eventTime}>{formatFullTime(entry.created_at)}</span>
+        </div>
+        <ul className={styles.eventLines}>
+          {entry.lines.map((line, i) => <li key={i}>{line}</li>)}
+        </ul>
+      </div>
+      <div className={styles.systemLine} />
+    </div>
+  );
 }
 
 function MessageBubble({ message, thread, grouped, now, onUndoSend, onRetrySend, onDiscardSend }) {

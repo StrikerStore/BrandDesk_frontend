@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { fetchAllActions, updateAction, closeAction, errorMessage } from '../../utils/api.js';
-import { getBrandColor, displayOrderId, formatTime } from '../../utils/helpers.js';
-import { ACTION_TYPES, TYPE_LABELS, TYPE_COLORS, schemaFor, progressOf } from '../../utils/actionTypes.js';
+import { getBrandColor, displayOrderId } from '../../utils/helpers.js';
+import { ACTION_TYPES, TYPE_LABELS, TYPE_COLORS, progressOf } from '../../utils/actionTypes.js';
 import { useToast } from '../../ui/ToastProvider.jsx';
 import ConfirmDialog from '../../ui/ConfirmDialog.jsx';
 import Icon from '../../ui/Icon.jsx';
@@ -63,10 +63,19 @@ export default function ActionsView({ onSelectThread }) {
   // immediately, text fields needed an explicit Save button, and nothing on
   // screen said which was which.
   const saveField = useCallback(async (actionId, field, value) => {
-    const previous = actions.find(a => a.id === actionId)?.[field];
+    const row = actions.find(a => a.id === actionId);
+    const previous = row?.[field];
     setActions(prev => prev.map(a => a.id === actionId ? { ...a, [field]: value } : a));
     try {
-      await updateAction(actionId, { [field]: value });
+      const { data } = await updateAction(actionId, { [field]: value });
+      // No thread header on this route, so the status change is reported as a
+      // toast — otherwise the ticket silently moves queues.
+      if (data?.thread_status && data.thread_status !== row?.thread_status) {
+        setActions(prev => prev.map(a => a.id === actionId ? { ...a, thread_status: data.thread_status } : a));
+        toast.info(data.reopened ? 'Ticket reopened' : 'Ticket moved to In progress', {
+          detail: row?.ticket_id || undefined,
+        });
+      }
       return true;
     } catch (err) {
       setActions(prev => prev.map(a => a.id === actionId ? { ...a, [field]: previous } : a));

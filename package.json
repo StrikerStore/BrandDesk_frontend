@@ -7,9 +7,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "vite preview --host 0.0.0.0 --port $PORT",
-    "test": "node src/utils/sanitize.test.mjs"
+    "test": "node src/utils/sanitize.test.mjs && node src/utils/actionEvents.test.mjs"
   },
   "dependencies": {
+    "@floating-ui/dom": "^1.8.0",
     "@tiptap/pm": "^3.29.2",
     "@tiptap/react": "^3.29.2",
     "@tiptap/starter-kit": "^3.29.2",

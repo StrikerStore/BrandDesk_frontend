@@ -1850,3 +1850,54 @@
   flex-shrink: 0;
 }
 .slaBannerNote { font-size: 10.5px; color: var(--text-tertiary); }
+
+/* ── Action progress in the timeline ─────────────────────────
+   thread_actions only ever stored current state, so none of this could be
+   shown before. Sits on the same rails as system messages so it reads as
+   part of the conversation. */
+.eventBubble {
+  flex-shrink: 0;
+  max-width: min(460px, 78%);
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-md);
+  background: var(--surface-2);
+}
+
+.eventBubbleReopen {
+  background: var(--amber-light);
+  border-color: #fcd34d;
+}
+
+.eventHead {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+}
+
+.eventTitle { font-size: 11.5px; font-weight: 600; color: var(--text-primary); }
+.eventWho   { font-size: 11.5px; color: var(--text-secondary); }
+.eventTime  { font-size: 10.5px; color: var(--text-tertiary); margin-left: auto; padding-left: 8px; }
+
+.eventLines {
+  margin: 5px 0 0;
+  padding-left: 17px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.eventLines li {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+/* A single step doesn't need a bullet */
+.eventLines:has(li:only-child) { padding-left: 0; list-style: none; }
+
+@media (max-width: 768px) {
+  .eventBubble { max-width: 88%; }
+  .eventTime { margin-left: 0; padding-left: 0; width: 100%; }
+}
