@@ -40,6 +40,7 @@ const PATHS = {
   package:    <><path d="m7.5 4.3 9 5.2" /><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" /><path d="M3.3 7 12 12l8.7-5" /><path d="M12 22V12" /></>,
   history:    <><path d="M3 7v6h6" /><path className="spinPart" d="M3 13a9 9 0 1 0 3-7.7L3 8" /><path className="hand" d="M12 8v4l3 2" /></>,
   refresh:    <><path d="M23 4v6h-6M1 20v-6h6" /><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" /></>,
+  copy:       <><rect x="8" y="8" width="14" height="14" rx="2" /><path d="M4 16a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2" /></>,
 
   // ── Chrome ─────────────────────────────────────────────────────
   chevron:    <path d="M6 9l6 6 6-6" />,

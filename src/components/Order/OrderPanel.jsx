@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { fetchOrder, fetchOrdersByEmail, updateThread } from '../../utils/api.js';
-import { displayOrderId } from '../../utils/helpers.js';
+import { displayOrderId, copyText } from '../../utils/helpers.js';
+import Icon from '../../ui/Icon.jsx';
 import styles from './OrderPanel.module.css';
 
 // Shipway's public tracking page is keyed on the AWB alone.
@@ -250,6 +251,36 @@ export default function OrderPanel({ thread }) {
 
 // ── Reusable order lines component ──────────────────────────
 
+// The tracking URL is never shown in full (it's unreadable inline), so agents
+// who need to paste it into a reply have no way to get at it. Owns its own
+// copied-state rather than the parent keying by order id — OrderLines maps.
+function CopyTrackButton({ url }) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const handleCopy = async (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // the row sits inside a click-toggled accordion
+    if (!(await copyText(url))) return;
+    setCopied(true);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <button
+      type="button"
+      className={`${styles.copyBtn} ${copied ? styles.copied : ''}`}
+      onClick={handleCopy}
+      title={copied ? 'Copied' : 'Copy tracking link'}
+      aria-label={copied ? 'Copied' : 'Copy tracking link'}
+    >
+      <Icon name={copied ? 'check' : 'copy'} size={12} active={copied} />
+    </button>
+  );
+}
+
 function OrderLines({ orders, baseId, compact }) {
   return (
     <div className={styles.orderRows}>
@@ -301,6 +332,7 @@ function OrderLines({ orders, baseId, compact }) {
                       <path d="M7 17 17 7M9 7h8v8" />
                     </svg>
                   </a>
+                  <CopyTrackButton url={shipwayUrl(o.tracking.awb)} />
                 </div>
               )}
             </div>

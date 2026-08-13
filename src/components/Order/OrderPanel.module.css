@@ -286,6 +286,7 @@
 
   .pastHeader { padding: 12px; min-height: 48px; }
   .pastRow { padding: 12px 0; min-height: 44px; }
+  .copyBtn { min-width: 32px; min-height: 32px; margin: -8px 0; }
 }
 /* Shipway tracking link — a control, not a raw URL */
 .trackLink {
@@ -301,3 +302,21 @@
   border-radius: var(--radius-sm);
 }
 .trackLink:hover { background: var(--accent-light); text-decoration: underline; }
+
+/* Copies the full tracking URL — the link text hides it */
+.copyBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* the row is baseline-aligned; an icon-only button has no useful baseline */
+  align-self: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  padding: 1px 5px;
+  margin: -1px 0;
+  border-radius: var(--radius-sm);
+}
+.copyBtn:hover { background: var(--accent-light); color: var(--accent-text); }
+.copyBtn.copied { color: var(--accent-text); }

@@ -143,6 +143,37 @@ export function truncate(str, len = 60) {
   return str.length > len ? str.slice(0, len) + '…' : str;
 }
 
+// Copy to clipboard, resolving true/false so the caller can confirm.
+// The panel is reachable over plain HTTP on the LAN, where navigator.clipboard
+// is undefined (non-secure context) — hence the execCommand fallback.
+export async function copyText(text) {
+  const value = String(text ?? '');
+  if (!value) return false;
+
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch {
+      // Denied permission or non-secure context — fall through.
+    }
+  }
+
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = value;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:-9999px;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 // Order numbers arrive as free text — "DS4334", "#DS4334", "Order #DS4334".
 // Several places render `#{order_number}`, which doubles up to "##DS4334" when
 // the stored value already has one. Callers keep adding their own '#'; this
