@@ -291,11 +291,16 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
   // details — straight from the browser to a third-party public API.
   const handleAiImprove = async (mode) => {
     if (!replyText.trim() || aiLoading) return;
+    const startedThread = threadIdRef.current;
+    // A second improve on top of an undone-able one keeps the true original,
+    // so undo always returns to what the agent actually typed.
+    const prevOriginal = aiOriginal;
     setAiLoading(mode);
     // Save original HTML so undo restores formatting too
-    setAiOriginal(editorRef.current?.getHTML() || '');
+    const currentHtml = editorRef.current?.getHTML() || '';
     try {
       const { data } = await improveText(replyText, mode);
+      if (threadIdRef.current !== startedThread) return; // agent moved on
       const clean = data.improved
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
@@ -305,8 +310,10 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
         .replace(/\n/g, '<br>')
         .trim();
       setEditorContent(clean);
+      aiRewrittenTextRef.current = editorRef.current?.getText() ?? '';
+      setAiOriginal(prevOriginal ?? currentHtml);
     } catch (err) {
-      setAiOriginal(null);
+      if (threadIdRef.current !== startedThread) return;
       toast.error(
         mode === 'grammar' ? "Couldn't fix grammar" : "Couldn't rewrite the reply",
         { detail: errorMessage(err) },
@@ -315,6 +322,12 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
       setAiLoading(null);
     }
   };
+
+  // "Undo rewrite" is only meaningful while the draft still IS the rewrite.
+  // The first real edit dismisses it and brings the Improve menu back.
+  useEffect(() => {
+    if (aiOriginal && replyText !== aiRewrittenTextRef.current) setAiOriginal(null);
+  }, [replyText, aiOriginal]);
   // ── Editor ───────────────────────────────────────────────────────────────────
   // The editor owns its document; `replyText` is only a plain-text mirror used
   // for enable/disable checks. Formatting goes through ProseMirror commands —
@@ -380,6 +393,13 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
   const editorRef       = useRef(null);
   const tplRef          = useRef(null);
   const attachInputRef  = useRef(null);
+  // Plain-text snapshot of the last AI rewrite. While the draft still matches
+  // it, "Undo rewrite" is offered; the first real edit brings back "Improve".
+  const aiRewrittenTextRef = useRef('');
+  // Current thread for async guards — a slow rewrite response must not land in
+  // whichever ticket the agent has switched to meanwhile.
+  const threadIdRef = useRef(threadId);
+  threadIdRef.current = threadId;
 
   const threadTags = (() => {
     const raw = thread?.tags;
@@ -453,6 +473,9 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
     setIsNote(false);
     setShowTemplates(false);
     setAttachments([]);
+    // Stale undo here would paste the previous ticket's draft into this one.
+    setAiOriginal(null);
+    aiRewrittenTextRef.current = '';
     setIsExpanded(false);
     setShowComposeTools(false);
     setHeaderDetailsOpen(false);
@@ -495,6 +518,10 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
       setEditorContent('');
       setIsNote(false);
       setAttachments([]);
+      // The rewritten draft is gone — offering to "undo" into an empty
+      // composer would resurrect it.
+      setAiOriginal(null);
+      aiRewrittenTextRef.current = '';
       // Auto advance: open → in_progress on first real reply
       if (!isNote && thread?.status === 'open') {
         applyUpdate({ status: 'in_progress' });
