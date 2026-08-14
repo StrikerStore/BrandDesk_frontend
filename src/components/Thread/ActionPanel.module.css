@@ -171,7 +171,7 @@
 
 .jerseyItem {
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 8px;
   padding: 2px 0;
 }
@@ -191,6 +191,9 @@
   font-weight: 500;
   color: var(--text-primary);
   line-height: 1.35;
+  /* The form invites "one per line" — keep those lines on render. */
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* Status section */

@@ -1358,13 +1358,16 @@ function MessageBubble({ message, thread, grouped, now, onUndoSend, onRetrySend,
 
   // System message — resolution event
   if (isSystem) {
-    const lines = message.body.split('\n\n');
+    // Body is "✅ Resolved by X\n\n<note>". The note itself can contain blank
+    // lines, so everything after the first separator belongs to it.
+    const [head, ...rest] = message.body.split('\n\n');
+    const note = rest.join('\n\n');
     return (
       <div className={styles.systemMsg}>
         <div className={styles.systemLine} />
         <div className={styles.systemBubble}>
-          <span className={styles.systemText}>{lines[0]}</span>
-          {lines[1] && <p className={styles.systemNote}>{lines[1]}</p>}
+          <span className={styles.systemText}>{head}</span>
+          {note && <p className={styles.systemNote}>{note}</p>}
           <span className={styles.bubbleTime}>{formatFullTime(message.sent_at)}</span>
         </div>
         <div className={styles.systemLine} />

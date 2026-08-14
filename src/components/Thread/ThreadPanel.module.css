@@ -317,6 +317,18 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+/* Outbound bodies are composer HTML; the global reset zeroes p margins, so
+   without these the sent reply loses the spacing the editor showed. Keep in
+   step with RichEditor.module.css. */
+.bubbleText p { margin: 0 0 8px; }
+.bubbleText p:last-child { margin-bottom: 0; }
+.bubbleText ul,
+.bubbleText ol { margin: 0 0 8px; padding-left: 20px; }
+.bubbleText blockquote {
+  margin: 0 0 8px;
+  padding-left: 10px;
+  border-left: 2px solid var(--border-md);
+}
 .bubbleText a { text-decoration: underline; opacity: 0.9; }
 .bubbleText a:hover { opacity: 1; }
 
@@ -901,6 +913,7 @@
   color: var(--green);
   margin-top: 4px;
   font-style: italic;
+  white-space: pre-wrap;
 }
 
 /* Resolution modal */

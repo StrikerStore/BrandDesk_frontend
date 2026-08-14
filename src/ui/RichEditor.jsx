@@ -97,7 +97,9 @@ const RichEditor = forwardRef(function RichEditor(
   useImperativeHandle(ref, () => ({
     focus:      () => editor?.chain().focus().run(),
     isEmpty:    () => !editor || editor.isEmpty,
-    getHTML:    () => (editor ? sanitizeComposerHtml(editor.getHTML()) : ''),
+    // Empty paragraphs (<p></p>) have zero height in the bubble and in the
+    // customer's mail client, so blank lines typed by the agent would vanish.
+    getHTML:    () => (editor ? sanitizeComposerHtml(editor.getHTML()).replace(/<p><\/p>/g, '<p><br></p>') : ''),
     getText:    () => editor?.getText() ?? '',
     setHTML:    (html) => editor?.commands.setContent(sanitizeComposerHtml(html), { emitUpdate: true }),
     clear:      () => editor?.commands.clearContent(true),
