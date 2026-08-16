@@ -98,35 +98,41 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
           <button className={styles.closeBtn} onClick={onClose}>✕</button>
         </div>
 
-        {/* Step 1 — Select type */}
+        {/* Step 1 — Select type.
+            The footer is a sibling of .body, not a child: .body is the scroll
+            area, and Cancel/Next scrolling out of reach on a short viewport
+            would be worse than the clipping this replaced. */}
         {step === 1 && (
-          <div className={styles.body}>
-            <p className={styles.stepHint}>What action needs to be taken for this customer?</p>
-            <div className={styles.typeGrid}>
-              {ACTION_TYPES.map(type => (
-                <button
-                  key={type.id}
-                  className={`${styles.typeCard} ${selectedType === type.id ? styles.typeCardActive : ''}`}
-                  onClick={() => handleSelectType(type.id)}
-                >
-                  <span className={styles.typeIcon}>{type.icon}</span>
-                  <span className={styles.typeLabel}>{type.label}</span>
-                  <span className={styles.typeDesc}>{type.desc}</span>
-                </button>
-              ))}
+          <>
+            <div className={styles.body}>
+              <p className={styles.stepHint}>What action needs to be taken for this customer?</p>
+              <div className={styles.typeGrid}>
+                {ACTION_TYPES.map(type => (
+                  <button
+                    key={type.id}
+                    className={`${styles.typeCard} ${selectedType === type.id ? styles.typeCardActive : ''}`}
+                    onClick={() => handleSelectType(type.id)}
+                  >
+                    <span className={styles.typeIcon}>{type.icon}</span>
+                    <span className={styles.typeLabel}>{type.label}</span>
+                    <span className={styles.typeDesc}>{type.desc}</span>
+                  </button>
+                ))}
+              </div>
+              {error && <p className={styles.error}>{error}</p>}
             </div>
-            {error && <p className={styles.error}>{error}</p>}
             <div className={styles.footer}>
               <button className={styles.cancelBtn} onClick={onClose}>Cancel</button>
               <button className={styles.nextBtn} onClick={handleNext} disabled={!selectedType}>
                 Next →
               </button>
             </div>
-          </div>
+          </>
         )}
 
         {/* Step 2 — Fill details */}
         {step === 2 && (
+          <>
           <div className={styles.body}>
             <p className={styles.stepHint}>Enter the details for this action.</p>
 
@@ -285,14 +291,14 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
             )}
 
             {error && <p className={styles.error}>{error}</p>}
-
-            <div className={styles.footer}>
-              <button className={styles.cancelBtn} onClick={() => setStep(1)}>← Back</button>
-              <button className={styles.submitBtn} onClick={handleSubmit} disabled={saving}>
-                {saving ? (selectedType === 'send_payment_link' ? 'Generating link…' : 'Logging…') : 'Log Action'}
-              </button>
-            </div>
           </div>
+          <div className={styles.footer}>
+            <button className={styles.cancelBtn} onClick={() => setStep(1)}>← Back</button>
+            <button className={styles.submitBtn} onClick={handleSubmit} disabled={saving}>
+              {saving ? (selectedType === 'send_payment_link' ? 'Generating link…' : 'Logging…') : 'Log Action'}
+            </button>
+          </div>
+          </>
         )}
       </div>
     </div>

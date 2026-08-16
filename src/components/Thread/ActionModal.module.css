@@ -15,6 +15,10 @@
   border-radius: 12px;
   width: 440px;
   max-width: calc(100vw - 32px);
+  /* Without a ceiling the wizard grows past the viewport and, because the
+     overlay centres it, gets clipped at BOTH ends with no way to scroll.
+     Seven action types was enough to do it at 100% zoom. */
+  max-height: calc(100vh - 32px);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
@@ -27,6 +31,7 @@
   justify-content: space-between;
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .title {
@@ -53,6 +58,10 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+  /* The scroll region. min-height:0 is what lets a flex child shrink below its
+     content height — without it the box refuses to shrink and overflows again. */
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .stepHint {
@@ -204,11 +213,14 @@
 }
 
 /* Footer */
+/* Sits outside .body so the buttons stay reachable however long the list gets. */
 .footer {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  padding-top: 4px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .cancelBtn {
@@ -275,7 +287,20 @@
   .title { font-size: 18px; font-weight: 600; }
   .closeBtn { font-size: 20px; min-width: 40px; min-height: 40px; }
 
-  .body { padding: 18px 16px calc(20px + env(safe-area-inset-bottom)); }
+  /* The sheet scrolls as a whole here (see .modal above), so .body must not
+     become a second, nested scroll container. */
+  .body { padding: 18px 16px; overflow-y: visible; }
+  /* Sticky rather than pinned: matches the sticky header, and keeps the
+     primary button on screen while the type list scrolls under it. */
+  .footer {
+    flex-direction: column-reverse;
+    gap: 10px;
+    position: sticky;
+    bottom: 0;
+    background: var(--surface);
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+    z-index: 2;
+ }
   .typeCard { padding: 14px; min-height: 60px; }
   .typeLabel { font-size: 15px; font-weight: 600; }
 
@@ -286,7 +311,6 @@
  }
   .fieldTextarea { min-height: 96px; }
 
-  .footer { flex-direction: column-reverse; gap: 10px; }
   .cancelBtn, .nextBtn, .submitBtn {
     width: 100%;
     min-height: 50px;
