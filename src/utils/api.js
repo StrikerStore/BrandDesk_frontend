@@ -126,11 +126,13 @@ export const fetchThreadActions   = (threadId)             => api.get(`/api/thre
 export const createThreadAction   = (threadId, data)       => api.post(`/api/threads/${threadId}/actions`, data);
 export const updateThreadAction   = (threadId, actionId, data) => api.patch(`/api/threads/${threadId}/actions/${actionId}`, data);
 export const closeThreadAction    = (threadId, actionId)   => api.post(`/api/threads/${threadId}/actions/${actionId}/close`);
+export const refreshThreadPayment = (threadId, actionId)   => api.post(`/api/threads/${threadId}/actions/${actionId}/refresh-payment`);
 
 // Actions (global consolidated view)
 export const fetchAllActions      = (params = {})          => api.get('/api/actions', { params });
 export const updateAction         = (actionId, data)       => api.patch(`/api/actions/${actionId}`, data);
 export const closeAction          = (actionId)             => api.post(`/api/actions/${actionId}/close`);
+export const refreshActionPayment = (actionId)             => api.post(`/api/actions/${actionId}/refresh-payment`);
 
 // AI text improvement (OpenRouter)
 export const improveText = (text, mode) => api.post('/api/ai/improve', { text, mode });

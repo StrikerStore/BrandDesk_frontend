@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fetchThreadActions, updateThreadAction, closeThreadAction, errorMessage } from '../../utils/api.js';
+import { fetchThreadActions, updateThreadAction, closeThreadAction, refreshThreadPayment, errorMessage } from '../../utils/api.js';
 import { TYPE_LABELS, TYPE_COLORS } from '../../utils/actionTypes.js';
 import { useToast } from '../../ui/ToastProvider.jsx';
 import ConfirmDialog from '../../ui/ConfirmDialog.jsx';
@@ -59,6 +59,27 @@ export default function ActionPanel({ threadId, onCountChange, onActionsChange, 
     } catch (err) {
       load(); // revert on failure
       toast.error("Couldn't save that change", { detail: errorMessage(err) });
+    }
+  };
+
+  /**
+   * Ask PayU for this link's status now, rather than waiting on the webhook or
+   * the two-minute sweep. Returns the outcome so the button can say what
+   * happened — "still unpaid" and "we couldn't reach PayU" are very different
+   * answers for an agent with a customer on the line.
+   */
+  const handleRefreshPayment = async (actionId) => {
+    try {
+      const { data } = await refreshThreadPayment(threadId, actionId);
+      setActions(prev => {
+        const next = prev.map(a => (a.id === actionId ? data.action : a));
+        onActionsChange?.(next);
+        return next;
+      });
+      if (data.action?.payment_received) toast.success('Payment confirmed');
+      else toast.info('No payment yet', { detail: `PayU reports "${data.action?.payment_status || 'pending'}".` });
+    } catch (err) {
+      toast.error("Couldn't check with PayU", { detail: errorMessage(err) });
     }
   };
 
@@ -152,6 +173,7 @@ export default function ActionPanel({ threadId, onCountChange, onActionsChange, 
         key={current.id}
         action={current}
         onFieldUpdate={handleFieldUpdate}
+        onRefreshPayment={handleRefreshPayment}
         onCloseAction={setConfirmClose}
       />
 
@@ -169,7 +191,7 @@ export default function ActionPanel({ threadId, onCountChange, onActionsChange, 
   );
 }
 
-function ActionCard({ action, onFieldUpdate, onCloseAction }) {
+function ActionCard({ action, onFieldUpdate, onRefreshPayment, onCloseAction }) {
   const typeColor = TYPE_COLORS[action.action_type] || { bg: '#f9fafb', color: '#374151', border: '#e5e7eb' };
   const isClosed = !!action.is_closed;
 
@@ -251,7 +273,12 @@ function ActionCard({ action, onFieldUpdate, onCloseAction }) {
           </div>
         )}
         {action.action_type === 'send_payment_link' && (
-          <PaymentStatus action={action} onFieldUpdate={onFieldUpdate} disabled={isClosed} />
+          <PaymentStatus
+            action={action}
+            onFieldUpdate={onFieldUpdate}
+            onRefreshPayment={onRefreshPayment}
+            disabled={isClosed}
+          />
         )}
       </div>
     </div>
@@ -547,8 +574,15 @@ function RefundStatus({ action, onFieldUpdate, disabled }) {
 
 // ── Payment link status ──────────────────────────────────────────────────────
 
-function PaymentStatus({ action, onFieldUpdate, disabled }) {
+function PaymentStatus({ action, onFieldUpdate, onRefreshPayment, disabled }) {
   const [copied, setCopied] = useState(false);
+  const [checking, setChecking] = useState(false);
+
+  const refresh = async () => {
+    setChecking(true);
+    try { await onRefreshPayment?.(action.id); }
+    finally { setChecking(false); }
+  };
 
   const copyLink = async () => {
     try {
@@ -620,10 +654,12 @@ function PaymentStatus({ action, onFieldUpdate, disabled }) {
             {paid ? 'Paid' : (action.payment_status || 'pending')}
           </span>
         </div>
+        {/* Confirmation is automatic, but "the customer says they've paid" is a
+            live conversation — an agent needs an answer now, not in two minutes. */}
         {!paid && !disabled && (
-          <span className={styles.statusValue} style={{ fontSize: 11, opacity: 0.7 }}>
-            Updates automatically
-          </span>
+          <button className={styles.editBtn} onClick={refresh} disabled={checking}>
+            {checking ? 'Checking…' : 'Check now'}
+          </button>
         )}
       </div>
 
