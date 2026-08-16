@@ -67,7 +67,7 @@ export const sendReply = (gmailId, data) => api.post(`/api/threads/${gmailId}/re
 export const syncThreads      = ()            => api.post('/api/sync');
 export const createManualThread = (data)      => api.post('/api/threads/manual', data);
 export const fullSyncThreads  = ()            => api.post('/api/sync?full=true');
-export const fetchStats       = ()            => api.get('/api/threads/stats/overview');
+export const fetchStats       = (params)      => api.get('/api/threads/stats/overview', { params });
 
 // Pending sends (recall / undo window)
 export const cancelPendingSend  = (id) => api.post(`/api/sends/${id}/cancel`);

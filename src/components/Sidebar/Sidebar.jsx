@@ -116,16 +116,30 @@ export default function Sidebar({
     }
   };
 
-  // Load counts
-  const loadStats = () => {
-    fetchStats().then(({ data }) => setStats(data.byStatus || {})).catch(() => {});
-  };
+  // Load counts. The badges follow every active filter except status — each
+  // tab keeps its own count — so search/brand/views narrow them like the list.
+  const statsFilters = {};
+  for (const [k, v] of Object.entries(filters)) {
+    if (k === 'status' || v == null || v === '' || v === 'all') continue;
+    statsFilters[k] = v;
+  }
+  const statsKey = JSON.stringify(statsFilters);
+  const statsReqSeq = useRef(0);
 
   useEffect(() => {
+    const loadStats = () => {
+      const seq = ++statsReqSeq.current;
+      fetchStats(JSON.parse(statsKey))
+        .then(({ data }) => {
+          // A slow response for an older filter must not overwrite a newer one
+          if (seq === statsReqSeq.current) setStats(data.byStatus || {});
+        })
+        .catch(() => {});
+    };
     loadStats();
     const interval = setInterval(loadStats, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [statsKey]);
 
   // Search is debounced into the URL now. It used to require Enter or a click
   // on a "Search" button, with no results-as-you-type at all.
