@@ -3,43 +3,60 @@
 // This config was previously duplicated in three files — ActionsView.jsx,
 // Thread/ActionPanel.jsx and Dashboard.jsx — and had already drifted
 // ("🔁 Alternate" vs "🔁 Alternate Product"). Import from here instead.
+//
+// `icon` used to live in a fourth copy inside Thread/ActionModal.jsx; it moved
+// here when send_payment_link was added rather than growing a seventh entry in
+// two lists that were already disagreeing with each other.
 
 export const ACTION_TYPES = [
   {
     id: 'exchange',
     label: 'Exchange',
+    icon: '🔄',
     desc: 'Pick up original jersey and send a replacement',
     color: { bg: '#eff6ff', color: '#1d4ed8', border: '#93c5fd' },
   },
   {
     id: 'return',
     label: 'Return',
+    icon: '↩',
     desc: 'Pick up original jersey and process refund',
     color: { bg: '#fef3c7', color: '#92400e', border: '#fcd34d' },
   },
   {
     id: 'alternate_product',
     label: 'Alternate Product',
+    icon: '🔁',
     desc: 'Send an alternate jersey to the customer',
     color: { bg: '#f0fdf4', color: '#15803d', border: '#86efac' },
   },
   {
     id: 'refund',
     label: 'Refund',
+    icon: '💰',
     desc: 'Process a direct refund — no pickup required',
     color: { bg: '#f5f3ff', color: '#6d28d9', border: '#c4b5fd' },
   },
   {
     id: 'change_size',
     label: 'Change Size',
+    icon: '📏',
     desc: 'Swap the customer’s jersey for a different size',
     color: { bg: '#ecfeff', color: '#0e7490', border: '#67e8f9' },
   },
   {
     id: 'change_address',
     label: 'Change Address',
+    icon: '📍',
     desc: 'Update the delivery address for the order',
     color: { bg: '#fdf2f8', color: '#be185d', border: '#f9a8d4' },
+  },
+  {
+    id: 'send_payment_link',
+    label: 'Send Payment Link',
+    icon: '💳',
+    desc: 'Generate a PayU link and collect a payment from the customer',
+    color: { bg: '#fff7ed', color: '#c2410c', border: '#fdba74' },
   },
 ];
 
@@ -94,6 +111,23 @@ export const ACTION_SCHEMA = {
     items:  [{ key: 'new_address', label: 'New address' }],
     checks: [{ key: 'address_change_done', label: 'Address updated' }],
     fields: [],
+  },
+  // Everything here except "Link sent" is `readOnly`, because the row is fixed
+  // the moment PayU mints the link: the amount and reason are what the customer
+  // sees on the checkout page, and the paid state and reference come back from
+  // PayU. The backend leaves all of them out of its PATCH allow-list, so an
+  // editable control would accept a change, drop it, and revert on reload.
+  // Consumers must pass `readOnly` through to `disabled`.
+  send_payment_link: {
+    items:  [{ key: 'payment_reason', label: 'For', readOnly: true }],
+    checks: [
+      { key: 'payment_link_sent', label: 'Link sent' },
+      { key: 'payment_received',  label: 'Payment received', readOnly: true },
+    ],
+    fields: [
+      { key: 'payment_amount', label: 'Amount', readOnly: true },
+      { key: 'payment_ref',    label: 'PayU reference', mono: true, readOnly: true },
+    ],
   },
 };
 

@@ -1,45 +1,9 @@
 import { useState } from 'react';
-import { createThreadAction } from '../../utils/api.js';
+import { createThreadAction, errorMessage } from '../../utils/api.js';
+// The type list used to be duplicated here, icons and all. It now comes from
+// the shared config so a new type is one edit, not two.
+import { ACTION_TYPES } from '../../utils/actionTypes.js';
 import styles from './ActionModal.module.css';
-
-const ACTION_TYPES = [
-  {
-    id: 'exchange',
-    label: 'Exchange',
-    icon: '🔄',
-    desc: 'Pick up original jersey and send a replacement',
-  },
-  {
-    id: 'return',
-    label: 'Return',
-    icon: '↩',
-    desc: 'Pick up original jersey and process refund',
-  },
-  {
-    id: 'alternate_product',
-    label: 'Alternate Product',
-    icon: '🔁',
-    desc: 'Send an alternate jersey to the customer',
-  },
-  {
-    id: 'refund',
-    label: 'Refund',
-    icon: '💰',
-    desc: 'Process a direct refund — no pickup required',
-  },
-  {
-    id: 'change_size',
-    label: 'Change Size',
-    icon: '📏',
-    desc: 'Swap the customer’s jersey for a different size',
-  },
-  {
-    id: 'change_address',
-    label: 'Change Address',
-    icon: '📍',
-    desc: 'Update the delivery address for the order',
-  },
-];
 
 export default function ActionModal({ threadId, onClose, onActionCreated }) {
   const [step, setStep] = useState(1); // 1 = choose type, 2 = fill details
@@ -47,6 +11,7 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
   const [form, setForm] = useState({
     pickup_jersey: '', exchange_jersey: '', alternate_jersey: '',
     current_jersey: '', new_jersey: '', new_address: '',
+    payment_amount: '', payment_reason: '',
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -84,6 +49,15 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
     if (selectedType === 'change_address' && !form.new_address.trim()) {
       setError('New address is required'); return;
     }
+    if (selectedType === 'send_payment_link') {
+      const amount = Number(form.payment_amount);
+      if (!form.payment_amount.trim() || !Number.isFinite(amount) || amount <= 0) {
+        setError('Enter a payment amount greater than 0'); return;
+      }
+      if (Math.round(amount * 100) / 100 !== amount) {
+        setError('Amount cannot have more than 2 decimal places'); return;
+      }
+    }
 
     setSaving(true);
     try {
@@ -95,12 +69,17 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
         current_jersey: form.current_jersey || undefined,
         new_jersey: form.new_jersey || undefined,
         new_address: form.new_address || undefined,
+        payment_amount: form.payment_amount || undefined,
+        payment_reason: form.payment_reason || undefined,
       });
       // Second argument carries the thread's resulting status — logging an
       // action is itself progress, so the ticket moves to In progress.
       onActionCreated(data.action, data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to log action');
+      // PayU failures come back as 400 (not configured) or 502 (rejected) with
+      // a real message. Surfacing it verbatim matters: the agent must not walk
+      // away believing a link exists when none was minted.
+      setError(errorMessage(err, 'Failed to log action'));
     } finally {
       setSaving(false);
     }
@@ -268,12 +247,49 @@ export default function ActionModal({ threadId, onClose, onActionCreated }) {
               </div>
             )}
 
+            {selectedType === 'send_payment_link' && (
+              <>
+                <div className={styles.fieldGroup}>
+                  <label className={styles.fieldLabel}>
+                    Amount (₹)
+                    <span className={styles.fieldRequired}>*</span>
+                  </label>
+                  <input
+                    autoFocus
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    className={styles.fieldInput}
+                    placeholder="e.g. 499"
+                    value={form.payment_amount}
+                    onChange={e => setForm(f => ({ ...f, payment_amount: e.target.value }))}
+                  />
+                  <p className={styles.fieldHint}>
+                    A PayU link for this exact amount is generated when you log the action.
+                  </p>
+                </div>
+                <div className={styles.fieldGroup}>
+                  <label className={styles.fieldLabel}>What is this payment for?</label>
+                  <input
+                    className={styles.fieldInput}
+                    placeholder="e.g. Size upgrade difference"
+                    value={form.payment_reason}
+                    onChange={e => setForm(f => ({ ...f, payment_reason: e.target.value }))}
+                  />
+                  <p className={styles.fieldHint}>
+                    Shown to the customer on the PayU checkout page. Send the link with a template
+                    containing {'{{payment_link}}'}.
+                  </p>
+                </div>
+              </>
+            )}
+
             {error && <p className={styles.error}>{error}</p>}
 
             <div className={styles.footer}>
               <button className={styles.cancelBtn} onClick={() => setStep(1)}>← Back</button>
               <button className={styles.submitBtn} onClick={handleSubmit} disabled={saving}>
-                {saving ? 'Logging…' : 'Log Action'}
+                {saving ? (selectedType === 'send_payment_link' ? 'Generating link…' : 'Logging…') : 'Log Action'}
               </button>
             </div>
           </div>

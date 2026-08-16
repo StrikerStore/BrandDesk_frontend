@@ -69,12 +69,15 @@ export default function ActionDetail({ action, onClose, onSaveField, onCloseActi
               <span className={styles.progressCount}>{done} of {total}</span>
             </div>
             <div className={styles.checks}>
+              {/* `readOnly` marks columns the server owns (see ACTION_SCHEMA) —
+                  they are absent from the PATCH allow-list, so an editable
+                  control here would silently discard the agent's change. */}
               {checks.map(c => (
                 <CheckRow
                   key={c.key}
                   label={c.label}
                   checked={!!action[c.key]}
-                  disabled={isClosed}
+                  disabled={isClosed || c.readOnly}
                   onChange={(v) => onSaveField(action.id, c.key, v ? 1 : 0)}
                 />
               ))}
@@ -91,7 +94,7 @@ export default function ActionDetail({ action, onClose, onSaveField, onCloseActi
                 key={it.key}
                 label={it.label}
                 value={action[it.key]}
-                disabled={isClosed}
+                disabled={isClosed || it.readOnly}
                 multiline
                 onSave={(v) => onSaveField(action.id, it.key, v || null)}
               />
@@ -108,7 +111,7 @@ export default function ActionDetail({ action, onClose, onSaveField, onCloseActi
                 label={f.label}
                 value={action[f.key]}
                 mono={f.mono}
-                disabled={isClosed}
+                disabled={isClosed || f.readOnly}
                 onSave={(v) => onSaveField(action.id, f.key, v || null)}
               />
             ))}

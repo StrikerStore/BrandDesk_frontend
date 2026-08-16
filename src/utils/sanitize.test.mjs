@@ -15,7 +15,7 @@ globalThis.Node = dom.window.Node;
 globalThis.HTMLElement = dom.window.HTMLElement;
 globalThis.DocumentFragment = dom.window.DocumentFragment;
 
-const { sanitizeEmailHtml, sanitizeComposerHtml, escapeHtml, isEmptyHtml } =
+const { sanitizeEmailHtml, sanitizeComposerHtml, escapeHtml, isEmptyHtml, linkifyUrls } =
   await import('./sanitize.js');
 
 let pass = 0, fail = 0;
@@ -120,6 +120,49 @@ test('isEmptyHtml recognises blank editor output', () => {
   assert.equal(isEmptyHtml('<p>&nbsp;</p>'), true);
   assert.equal(isEmptyHtml(''), true);
   assert.equal(isEmptyHtml('<p>hi</p>'), false);
+});
+
+// linkifyUrls runs on escaped template text so a payment link the customer is
+// asked to click actually arrives as a link. It only ever sees escapeHtml
+// output, so every case below is escaped first, as in ThreadPanel.
+console.log('\nlinkifyUrls');
+test('wraps a bare https URL', () => {
+  const out = linkifyUrls(escapeHtml('Pay here: https://pay.example.com/abc123'));
+  assert.equal(out, 'Pay here: <a href="https://pay.example.com/abc123">https://pay.example.com/abc123</a>');
+});
+test('keeps query strings intact through escaping', () => {
+  const out = linkifyUrls(escapeHtml('https://pay.example.com/l?id=7&token=xy'));
+  assert.equal(out, '<a href="https://pay.example.com/l?id=7&amp;token=xy">https://pay.example.com/l?id=7&amp;token=xy</a>');
+});
+test('leaves trailing sentence punctuation outside the link', () => {
+  const out = linkifyUrls(escapeHtml('Use https://pay.example.com/x.'));
+  assert.ok(out.endsWith('</a>.'), out);
+  assert.ok(!out.includes('/x.</a>'), out);
+});
+test('does not swallow a following apostrophe', () => {
+  const out = linkifyUrls(escapeHtml("https://pay.example.com/x's fine"));
+  assert.ok(out.includes('>https://pay.example.com/x</a>'), out);
+});
+test('ignores non-http schemes', () => {
+  assert.equal(linkifyUrls(escapeHtml('javascript:alert(1)')), 'javascript:alert(1)');
+});
+test('a quote cannot break out of the href attribute', () => {
+  // The escaped quote must terminate the URL match, not be absorbed into it —
+  // otherwise the payload would land inside href="..." as live markup.
+  const out = linkifyUrls(escapeHtml('https://a.test/"><img src=x onerror=y>'));
+  assert.equal(out, '<a href="https://a.test/">https://a.test/</a>&quot;&gt;&lt;img src=x onerror=y&gt;');
+  assert.ok(!out.includes('<img'), out);
+  assert.equal(sanitizeComposerHtml(out).includes('<img'), false);
+});
+test('the result survives the composer sanitiser as a link', () => {
+  const html = linkifyUrls(escapeHtml('https://pay.example.com/abc'));
+  const out = sanitizeComposerHtml(html);
+  assert.ok(out.includes('href="https://pay.example.com/abc"'), out);
+  assert.ok(out.includes('rel="noopener noreferrer nofollow"'), out);
+});
+test('empty input is safe', () => {
+  assert.equal(linkifyUrls(''), '');
+  assert.equal(linkifyUrls(undefined), '');
 });
 
 console.log(`\n${pass} passed, ${fail} failed\n`);

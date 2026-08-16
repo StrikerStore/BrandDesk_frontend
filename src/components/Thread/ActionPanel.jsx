@@ -213,6 +213,7 @@ function ActionCard({ action, onFieldUpdate, onCloseAction }) {
         {action.current_jersey && <JerseyInfo label="Current" value={action.current_jersey} />}
         {action.new_jersey && <JerseyInfo label="New" value={action.new_jersey} />}
         {action.new_address && <JerseyInfo label="New Address" value={action.new_address} />}
+        {action.payment_reason && <JerseyInfo label="For" value={action.payment_reason} />}
       </div>
 
       {/* Status section — the jersey row's border already separates it */}
@@ -248,6 +249,9 @@ function ActionCard({ action, onFieldUpdate, onCloseAction }) {
               disabled={isClosed}
             />
           </div>
+        )}
+        {action.action_type === 'send_payment_link' && (
+          <PaymentStatus action={action} onFieldUpdate={onFieldUpdate} disabled={isClosed} />
         )}
       </div>
     </div>
@@ -537,6 +541,111 @@ function RefundStatus({ action, onFieldUpdate, disabled }) {
           )
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Payment link status ──────────────────────────────────────────────────────
+
+function PaymentStatus({ action, onFieldUpdate, disabled }) {
+  const [copied, setCopied] = useState(false);
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(action.payment_link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard is blocked on insecure origins; the link is selectable below.
+    }
+  };
+
+  const paid = !!action.payment_received;
+
+  return (
+    <div className={styles.statusList}>
+      {/* Amount — set once at creation, because the PayU link is for this
+          exact figure. Editing it here would only make the two disagree. */}
+      <div className={styles.statusRow}>
+        <div className={styles.statusRowLeft}>
+          <span className={styles.statusLabel}>Amount</span>
+          <span className={styles.statusValue}>
+            ₹{Number(action.payment_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+          </span>
+        </div>
+      </div>
+
+      {/* The link itself — copying it is the main thing an agent does here */}
+      {action.payment_link && (
+        <div className={styles.statusRow}>
+          <div className={styles.statusRowLeft}>
+            <span className={styles.statusLabel}>Payment link</span>
+            <a
+              className={styles.statusValue}
+              href={action.payment_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: 11, wordBreak: 'break-all' }}
+            >
+              {action.payment_link}
+            </a>
+          </div>
+          <button className={styles.editBtn} onClick={copyLink}>
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+      )}
+
+      <CheckboxRow
+        label="Link Sent To Customer"
+        checked={!!action.payment_link_sent}
+        onChange={v => onFieldUpdate(action.id, 'payment_link_sent', v ? 1 : 0)}
+        disabled={disabled}
+      />
+
+      {/* Always disabled: PayU owns this. The backend leaves payment_received
+          out of its PATCH allow-list, so an editable box here would be a lie —
+          it would appear to tick and then revert on the next load. */}
+      <CheckboxRow
+        label="Payment Received"
+        checked={paid}
+        onChange={() => {}}
+        disabled
+      />
+
+      <div className={styles.statusRow}>
+        <div className={styles.statusRowLeft}>
+          <span className={styles.statusLabel}>Status</span>
+          <span className={styles.statusValue}>
+            {paid ? 'Paid' : (action.payment_status || 'pending')}
+          </span>
+        </div>
+        {!paid && !disabled && (
+          <span className={styles.statusValue} style={{ fontSize: 11, opacity: 0.7 }}>
+            Updates automatically
+          </span>
+        )}
+      </div>
+
+      {action.payment_ref && (
+        <div className={styles.statusRow}>
+          <div className={styles.statusRowLeft}>
+            <span className={styles.statusLabel}>PayU Reference</span>
+            <span className={styles.statusValue} style={{ fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+              {action.payment_ref}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {action.payment_paid_at && (
+        <div className={styles.statusRow}>
+          <div className={styles.statusRowLeft}>
+            <span className={styles.statusLabel}>Paid At</span>
+            <span className={styles.statusValue}>{formatDateTime(action.payment_paid_at)}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

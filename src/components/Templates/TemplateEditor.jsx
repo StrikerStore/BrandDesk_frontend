@@ -3,7 +3,7 @@ import { fetchTemplates, createTemplate, updateTemplate, deleteTemplate } from '
 import styles from './TemplateEditor.module.css';
 
 const CATEGORIES = ['General', 'Shipping', 'Refunds', 'Exchanges'];
-const VARIABLES = ['{{customer_name}}', '{{order_id}}', '{{ticket_id}}', '{{tracking_url}}', '{{tracking_link}}', '{{amount}}', '{{brand}}'];
+const VARIABLES = ['{{customer_name}}', '{{order_id}}', '{{ticket_id}}', '{{tracking_url}}', '{{tracking_link}}', '{{amount}}', '{{payment_link}}', '{{brand}}'];
 
 export default function TemplateEditor() {
   const [templates, setTemplates]   = useState([]);

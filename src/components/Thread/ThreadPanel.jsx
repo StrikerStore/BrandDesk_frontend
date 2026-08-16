@@ -12,7 +12,7 @@ import { formatFullTime, formatClock, formatDayLabel, resolveTemplate, STATUS_CO
 // ProseMirror is the app's heaviest dependency and is only needed once a
 // thread is open, so it loads on demand rather than in the first paint.
 const RichEditor = lazy(() => import('../../ui/RichEditor.jsx'));
-import { sanitizeEmailHtml, escapeHtml } from '../../utils/sanitize.js';
+import { sanitizeEmailHtml, escapeHtml, linkifyUrls } from '../../utils/sanitize.js';
 // Hints used to hard-code ⌘, which is wrong on the Windows machines this team
 // actually uses. formatShortcut renders for the reader's keyboard.
 import { formatShortcut } from '../../utils/shortcuts.js';
@@ -571,6 +571,20 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
       } catch {}
     }
 
+    // Payment link comes off the ticket's newest still-open payment action.
+    // Same shape as the tracking lookup above: fetched here rather than held in
+    // state, so the link is whatever was current at the moment of insertion.
+    let paymentLink = '';
+    if (tpl.body?.includes('{{payment_link}}')) {
+      try {
+        const { data } = await fetchThreadActions(threadId);
+        const payAction = (data.actions || [])
+          .filter(a => a.action_type === 'send_payment_link' && !a.is_closed && a.payment_link)
+          .pop();
+        if (payAction) paymentLink = payAction.payment_link;
+      } catch {}
+    }
+
     const vars = {
       customerName: firstName,
       brand:        thread?.brand || '',
@@ -579,13 +593,14 @@ export default function ThreadPanel({ threadId, brands, onThreadUpdate, onBack, 
       amount:       '[amount]',
       trackingUrl,
       trackingLink: trackingUrl,
+      paymentLink,
     };
     // Convert plain text template to HTML (preserve line breaks)
     const resolved = resolveTemplate(tpl.body, vars);
     // Template bodies are plain text with variables already substituted —
     // escape before turning newlines into markup, so a customer name
     // containing "<" can't inject anything.
-    const html = escapeHtml(resolved).replace(/\n/g, '<br>');
+    const html = linkifyUrls(escapeHtml(resolved)).replace(/\n/g, '<br>');
     setEditorContent(html);
     setShowTemplates(false);
     await trackTemplateUse(tpl.id);

@@ -82,6 +82,34 @@ export function escapeHtml(text) {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Turn bare URLs in *already-escaped* HTML into anchors.
+ *
+ * Template bodies are plain text run through `escapeHtml`, which left every URL
+ * as dead text in the customer's inbox — tolerable for a tracking link they can
+ * copy, useless for a payment link we are asking them to click.
+ *
+ * Operating on escaped input is the point: `&` is already `&amp;`, so query
+ * strings survive intact, and there is no way for the source text to have
+ * smuggled in a tag. The alternation accepts `&amp;` inside a URL but stops at
+ * `&#39;`/`&quot;`, so an apostrophe after a link doesn't get swallowed.
+ *
+ * Only http(s) is matched here, and DOMPurify re-checks the scheme on the way
+ * out of the composer (see ALLOWED_URI_REGEXP above).
+ */
+const URL_IN_ESCAPED_HTML = /https?:\/\/(?:&amp;|[^\s<>&"'])+/g;
+
+export function linkifyUrls(escapedHtml) {
+  if (!escapedHtml) return '';
+  return String(escapedHtml).replace(URL_IN_ESCAPED_HTML, (match) => {
+    // Trailing sentence punctuation is almost never part of the URL.
+    let url = match.replace(/[.,;:!?]+$/, '');
+    // A closing paren belongs to the sentence unless the URL opened one.
+    if (url.endsWith(')') && !url.includes('(')) url = url.slice(0, -1);
+    return `<a href="${url}">${url}</a>${match.slice(url.length)}`;
+  });
+}
+
 /** True when the HTML carries no visible content — used to disable Send. */
 export function isEmptyHtml(html) {
   if (!html) return true;

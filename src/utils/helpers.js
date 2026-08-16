@@ -53,6 +53,7 @@ export function resolveTemplate(body, vars = {}) {
     .replace(/\{\{tracking_url\}\}/g,  vars.trackingUrl   || '[tracking URL]')
     .replace(/\{\{tracking_link\}\}/g, vars.trackingLink  || vars.trackingUrl || '[tracking link]')
     .replace(/\{\{amount\}\}/g,        vars.amount        || '[amount]')
+    .replace(/\{\{payment_link\}\}/g,  vars.paymentLink   || '[payment link]')
     .replace(/\{\{brand\}\}/g,         vars.brand         || 'us');
 }
  
