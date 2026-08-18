@@ -104,6 +104,8 @@ export const fetchAnalyticsAgents    = (p={}) => api.get('/api/analytics/agents'
 // Leaderboard on the typed resolver name — full history, ignores the agent filter
 export const fetchAnalyticsResolvedBy = (p={}) => api.get('/api/analytics/resolved-by',   { params: p });
 export const fetchAnalyticsTemplates = ()     => api.get('/api/analytics/templates');
+// Admin only — hour-of-day activity in IST. 403s for agents, so guard the call.
+export const fetchAnalyticsHourly    = (p={}) => api.get('/api/analytics/hourly',        { params: p });
 
 // Admin only — streams a multi-sheet .xlsx
 export const downloadAnalyticsExport = (p={}) =>

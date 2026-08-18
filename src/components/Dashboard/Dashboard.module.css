@@ -391,6 +391,7 @@
 /* Shared chart series colours — one definition, used by bars, dots and legends */
 .barTotal    { background: #93c5fd; }
 .barResolved { background: #6ee7b7; }
+.barActions  { background: #fcd34d; }
 .lineStroke  { stroke: #a78bfa; }
 .lineDot     { fill: #a78bfa; }
 

@@ -3,7 +3,8 @@ import {
   fetchAnalyticsOverview, fetchAnalyticsVolume, fetchAnalyticsByBrand,
   fetchAnalyticsByIssue, fetchAnalyticsResponse, fetchAnalyticsSla,
   fetchAnalyticsActions, fetchAnalyticsAgents, fetchAnalyticsResolvedBy,
-  fetchAnalyticsTemplates, downloadAnalyticsExport, errorMessage,
+  fetchAnalyticsTemplates, fetchAnalyticsHourly,
+  downloadAnalyticsExport, errorMessage,
 } from '../../utils/api.js';
 import { TYPE_LABELS } from '../../utils/actionTypes.js';
 import { useToast } from '../../ui/ToastProvider.jsx';
@@ -36,6 +37,13 @@ function formatMins(mins) {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+// Hour-of-day buckets come back already shifted to IST by the server, so this
+// only has to pad — never re-convert, or the shift lands twice.
+function formatHour(h) {
+  if (h === null || h === undefined) return '—';
+  return `${String(h).padStart(2, '0')}:00`;
+}
+
 // A raw count means little on its own — the delta against the equivalent
 // preceding window is what makes it readable.
 function delta(current, previous) {
@@ -66,6 +74,7 @@ export default function Dashboard({ user, brands = [], onDrillDown, onOpenThread
   const [actions, setActions]     = useState([]);
   const [templates, setTemplates] = useState([]);
   const [sla, setSla]             = useState(null);
+  const [hourly, setHourly]       = useState(null);   // admin only
 
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
@@ -89,11 +98,14 @@ export default function Dashboard({ user, brands = [], onDrillDown, onOpenThread
     setError(null);
     try {
       const p = JSON.parse(paramsKey);
-      const [ov, vol, br, iss, resp, slaD, act, ag, rby, tpl] = await Promise.all([
+      const [ov, vol, br, iss, resp, slaD, act, ag, rby, tpl, hr] = await Promise.all([
         fetchAnalyticsOverview(p), fetchAnalyticsVolume(p), fetchAnalyticsByBrand(p),
         fetchAnalyticsByIssue(p), fetchAnalyticsResponse(p), fetchAnalyticsSla(p),
         fetchAnalyticsActions(p), fetchAnalyticsAgents(p), fetchAnalyticsResolvedBy(p),
         fetchAnalyticsTemplates(),
+        // /hourly is admin-only; letting an agent's 403 into the batch would
+        // reject the whole Promise.all and blank the page for them.
+        isAdmin ? fetchAnalyticsHourly(p) : Promise.resolve({ data: null }),
       ]);
       setOverview(ov.data);
       setVolume(vol.data || []);
@@ -105,13 +117,14 @@ export default function Dashboard({ user, brands = [], onDrillDown, onOpenThread
       setAgents(ag.data || []);
       setResolvers(rby.data || []);
       setTemplates(tpl.data || []);
+      setHourly(hr.data);
     } catch (err) {
       console.error('Analytics load error:', err);
       setError(err.response?.data?.error || err.message);
     } finally {
       setLoading(false);
     }
-  }, [paramsKey]);
+  }, [paramsKey, isAdmin]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -142,6 +155,10 @@ export default function Dashboard({ user, brands = [], onDrillDown, onOpenThread
     : (range === 1 ? 'Today' : `Last ${range} days`);
 
   const selectRange = (v) => { setRange(v); setCustom({ from: '', to: '' }); };
+
+  const agentLabel = agent === 'all'
+    ? 'All agents'
+    : (agents.find(a => String(a.user_id) === String(agent))?.name || 'Selected agent');
 
   const setCustomFrom = (v) => setCustom(c => ({ from: v, to: c.to || toDateStr(new Date()) }));
   const setCustomTo   = (v) => setCustom(c => ({ from: c.from || v, to: v }));
@@ -540,6 +557,70 @@ export default function Dashboard({ user, brands = [], onDrillDown, onOpenThread
             </div>
           )}
           </Band>
+
+          {/* ── BAND 4 · Working hours (admin only) ───────────────────
+              Every band above answers "how much" over a period. This one
+              answers "when in the day", which is the only way to see that an
+              agent's output is spread over three hours rather than nine. */}
+          {isAdmin && hourly && (
+            <Band title="Working hours" sub={`${agentLabel} · ${periodLabel}`}>
+              <div className={styles.cardGrid}>
+                <StatCard label="Active hours" value={hourly.summary.active_hours || '—'} color="purple" isText
+                  sub={hourly.summary.days_active > 1
+                    ? `avg over ${hourly.summary.days_active} days worked`
+                    : 'hours with any activity'} />
+                <StatCard label="First activity" value={formatHour(hourly.summary.first_hour)} color="blue" isText sub="IST" />
+                <StatCard label="Last activity"  value={formatHour(hourly.summary.last_hour)}  color="blue" isText sub="IST" />
+                <StatCard label="Busiest hour" value={formatHour(hourly.summary.peak_hour)} color="amber" isText
+                  sub={hourly.summary.peak_resolved ? `${hourly.summary.peak_resolved} resolved` : 'no resolutions'} />
+                <StatCard label="Resolved" value={hourly.summary.total_resolved} color="green" />
+                <StatCard label="Replies sent" value={hourly.summary.total_replies} color="purple"
+                  sub={`${hourly.summary.total_notes} notes · ${hourly.summary.total_actions} actions`} />
+              </div>
+
+              <div className={styles.twoCol}>
+                <Panel
+                  title="Activity by hour of day"
+                  sub={`${agentLabel} · IST`}
+                  note="Hours are IST. Internal notes count towards active hours but aren't drawn as a bar. Buckets use the IST calendar day, so a ticket resolved between midnight and 5:30 AM IST can land on a different day here than in Agent performance above, which groups on the UTC day."
+                >
+                  {!hourly.summary.days_active ? (
+                    <Empty text="No activity recorded for this selection" />
+                  ) : (
+                    <BarChart data={hourly.hours} bars={[
+                      { key: 'resolved',       label: 'Resolved', cls: styles.barResolved },
+                      { key: 'replies',        label: 'Replies',  cls: styles.barTotal },
+                      { key: 'actions_closed', label: 'Actions',  cls: styles.barActions },
+                    ]} />
+                  )}
+                </Panel>
+
+                {/* Only worth its own table once there's more than one day to
+                    compare — on a single date it would just restate the cards. */}
+                {hourly.by_day.length > 1 && (
+                  <Panel title="Hours worked per day" sub="hours with any recorded activity">
+                    <table className={styles.table}>
+                      <thead><tr>
+                        <th>Date</th><th>Active hrs</th><th>First</th><th>Last</th><th>Resolved</th><th>Replies</th>
+                      </tr></thead>
+                      <tbody>
+                        {hourly.by_day.map(d => (
+                          <tr key={d.date}>
+                            <td>{d.label}</td>
+                            <td><strong>{d.active_hours}</strong></td>
+                            <td className={styles.muted}>{formatHour(d.first_hour)}</td>
+                            <td className={styles.muted}>{formatHour(d.last_hour)}</td>
+                            <td>{d.resolved}</td>
+                            <td>{d.replies}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </Panel>
+                )}
+              </div>
+            </Band>
+          )}
 
         </div>
       )}
