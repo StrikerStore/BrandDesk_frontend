@@ -269,37 +269,30 @@
    ============================================================ */
 @media (max-width: 768px) {
   .overlay { align-items: flex-end; }
+  /* The sheet keeps the base `overflow: hidden` + column flex: .body is the
+     one scroller, header and footer are pinned by flex-shrink: 0. Making the
+     whole sheet scroll instead left .body shrinkable with visible overflow,
+     so the cards painted outside their own box and the footer landed
+     partway up the list. */
   .modal {
     width: 100%;
     max-width: 100%;
     max-height: 92dvh;
-    overflow-y: auto;
     border-bottom: none;
     border-radius: 22px 22px 0 0;
  }
-  .header {
-    padding: 16px 18px;
-    position: sticky;
-    top: 0;
-    background: var(--surface);
-    z-index: 2;
- }
+  .header { padding: 16px 18px; background: var(--surface); }
   .title { font-size: 18px; font-weight: 600; }
   .closeBtn { font-size: 20px; min-width: 40px; min-height: 40px; }
 
-  /* The sheet scrolls as a whole here (see .modal above), so .body must not
-     become a second, nested scroll container. */
-  .body { padding: 18px 16px; overflow-y: visible; }
-  /* Sticky rather than pinned: matches the sticky header, and keeps the
-     primary button on screen while the type list scrolls under it. */
+  .body { flex: 1; padding: 18px 16px; }
+  /* Pinned by flex, not sticky. Stacked so the primary button is the one
+     under the thumb, with the home-indicator inset added to the padding. */
   .footer {
     flex-direction: column-reverse;
     gap: 10px;
-    position: sticky;
-    bottom: 0;
     background: var(--surface);
     padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
-    z-index: 2;
  }
   .typeCard { padding: 14px; min-height: 60px; }
   .typeLabel { font-size: 15px; font-weight: 600; }

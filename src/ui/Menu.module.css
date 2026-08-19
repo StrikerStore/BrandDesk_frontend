@@ -19,6 +19,13 @@
 
 .compact { height: 26px; font-size: 12px; padding: 0 6px 0 8px; }
 
+/* index.css puts a 44px touch floor on every button for coarse pointers, which
+   outranks the height above and rendered these pills as slabs on mobile. Same
+   opt-out as .scrollTopBtn/.scrollBottomBtn in ThreadPanel.module.css. */
+@media (pointer: coarse) {
+  .compact { min-height: 0; }
+}
+
 .triggerLabel {
   overflow: hidden;
   text-overflow: ellipsis;
