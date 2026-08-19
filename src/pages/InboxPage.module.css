@@ -86,27 +86,6 @@
     flex-direction: column;
  }
 
-  /* FAB */
-  .fab {
-    position: fixed;
-    right: 16px;
-    bottom: calc(74px + env(safe-area-inset-bottom));
-    z-index: 480;
-    width: 58px;
-    height: 58px;
-    border-radius: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--accent);
-    color: #fff;
-    box-shadow: var(--shadow-md);
-    transition: transform 0.08s ease, box-shadow 0.08s ease;
- }
-  .fab:active {
-    transform: translate(2px, 2px);
- }
-
   /* Customer bottom sheet */
   .sheetOverlay {
     position: fixed;

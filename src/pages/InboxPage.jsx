@@ -199,14 +199,9 @@ export default function InboxPage() {
             )}
           </>
         ) : (
-          <>
-            {list}
-            <button className={styles.fab} onClick={() => setShowNewTicket(true)} aria-label="Raise ticket for customer">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            </button>
-          </>
+          /* No FAB: the list header's "+ New" already opens this same modal,
+             and two new-ticket buttons on one screen read as two actions. */
+          list
         )}
 
         {showNewTicket && (
