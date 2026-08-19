@@ -93,11 +93,16 @@
 
 .brandWrap { position: relative; }
 
+/* min-height: 0 opts out of the 44px coarse-pointer floor in index.css. That
+   floor only reaches the buttons in this row, not the <select> beside them, so
+   on touch the brand and save-view controls stretched to 44px while the saved
+   view stayed at 28px. */
 .brandBtn {
   display: flex;
   align-items: center;
   gap: 5px;
   height: 28px;
+  min-height: 0;
   padding: 0 9px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-md);
@@ -586,10 +591,16 @@
 }
 .viewPillDelete:hover { color: var(--red); background: var(--red-light); }
 
+/* Sized to match .viewSelect/.brandBtn rather than left to its padding, so the
+   control row stays one height — see the note on .brandBtn. */
 .addViewBtn {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  min-height: 0;
   font-size: 11px;
   font-weight: 500;
-  padding: 3px 9px;
+  padding: 0 9px;
   border-radius: 99px;
   border: 1px dashed var(--border-md);
   color: var(--text-tertiary);
@@ -887,7 +898,13 @@
     background: var(--surface);
     font-weight: 600;
  }
-  .tabCountActive { color: #fff; }
+  /* .tabCount is repainted above, after the base .tabCountActive, so the active
+     pill has to restate both halves — a bare `color: #fff` left it white on
+     white and the count on the selected tab vanished. */
+  .tabCountActive {
+    background: var(--accent-light);
+    color: var(--accent-text);
+ }
 
   /* Thread list */
   .list {
